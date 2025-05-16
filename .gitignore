@@ -2,5 +2,5 @@ Pipfile.lock
 .idea
 __pycache__/
 .DS_Store
-venv/
-.env
+.venv
+personal_testing

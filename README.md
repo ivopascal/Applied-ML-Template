@@ -103,13 +103,13 @@ We recommend following the same folder structure as in the original repository. 
 Your repository should look something like this:
 ```bash
 ├───data  # Stores .csv
-├───models  # Stores .pkl
-├───notebooks  # Contains experimental .ipynbs
-├───project_name
+├───models  # Stores .pkl 
+├───experimental  # Contains experimental .ipynbs & .py
+├───f1_predictor
 │   ├───data  # For data processing, not storing .csv
-│   ├───features
+│   ├───features # For scripts and logic for feature engineering
 │   └───models  # For model creation, not storing .pkl
-├───reports
+├───reports # For outputs and visualisations
 ├───tests
 │   ├───data
 │   ├───features

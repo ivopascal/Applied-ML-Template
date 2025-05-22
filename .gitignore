@@ -7,3 +7,4 @@ data/raw/
 *.csv
 *.xlsx
 *.pkl
+venv/

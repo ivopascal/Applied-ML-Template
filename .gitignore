@@ -6,3 +6,4 @@ data/cleaned/
 data/raw/
 *.csv
 *.xlsx
+*.pkl

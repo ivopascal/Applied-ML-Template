@@ -16,28 +16,28 @@ class SudokuPreprocessor:
     def __init__(self,
                  # ADD EDGE DETECTOR ATTRIBUTES WHEN NECESSARY
                  clip_limit: int = 3,
-                 output_size: int = 450) -> None:
+                 output_size: int = 252) -> None:
         self.edge_detector = EdgeDetector()
         self.converter = ImageConverter(clip_limit)
         self.cropper = ImageCropper(output_size)
 
-    def preprocess_image(self, image: Image.Image, keypoints: np.ndarray=None) -> Image.Image:
+    def convert_crop_image(self, image: Image.Image, keypoints: np.ndarray=None) -> Image.Image:
         clahe_img = self.converter.apply_clahe(image)
         bbox = self.edge_detector.get_bounding_box(clahe_img, keypoints)
         return self.cropper.crop_to_box(clahe_img, bbox)
 
-    def preprocess_datapoint(self, dp: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_crop_datapoint(self, dp: Dict[str, Any]) -> Dict[str, Any]:
         dp = dp.copy()
-        dp['image'] = self.preprocess_image(dp['image'], dp['keypoints'])
+        dp['image'] = self.convert_crop_image(dp['image'], dp['keypoints'])
         return dp
     
     def sudoku_preprocessing(self, sudoku: Union[Image.Image, Dict[str, Any]]) -> Tuple[Any, Any]:
         if isinstance(sudoku, Image.Image):
-            preprocessed_img = self.preprocess_image(sudoku)
+            preprocessed_img = self.convert_crop_image(sudoku)
             digit_list = SudokuSplitter.split_image(preprocessed_img)
             return preprocessed_img, digit_list
         elif isinstance(sudoku, dict):
-            preprocessed_dp = self.preprocess_datapoint(sudoku)
+            preprocessed_dp = self.convert_crop_datapoint(sudoku)
             labeled_digit_list = SudokuSplitter.split_datapoint(preprocessed_dp)
             return preprocessed_dp, labeled_digit_list
         else:
@@ -101,9 +101,9 @@ if __name__ == '__main__':
     preprocessor.handler.save_all_datasets()
 
     # only preprocesses a single split from raw dataset
-    test_preprocessed, test_digits = preprocessor.split_preprocessing('test')
+    test_convert_crop, test_digits = preprocessor.split_preprocessing('test')
     # preprocesses whole raw dataset, also saves preprocessed and digits dataset to handler
-    preprocessed_dataset, digits_dataset = preprocessor.dataset_preprocessing()
+    convert_crop_dataset, digits_dataset = preprocessor.dataset_preprocessing()
     preprocessor.handler.save_all_datasets()
 
     print(preprocessor.handler.datasets['raw']) # raw dataset

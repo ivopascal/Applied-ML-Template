@@ -97,28 +97,28 @@ class GuestPredictionLogisticModel:
 
         # Numerical features from article ranks
         self.art_cols_: List[str] = [
-            "art_bloedworst",
-            "art_broodplankje",
-            "art_captain_dinner",
-            "art_carpaccio",
-            "art_creme_brulee",
-            "art_dame_blanche",
-            "art_garnalen_cocktail",
-            "art_gehaktbal",
-            "art_kaasplankje",
-            "art_kalfslever",
-            "art_koffie_compleet",
-            "art_olijven",
-            "art_poffert",
-            "art_sate_spies",
-            "art_schnitzel",
-            "art_sliptong",
-            "art_sorbet",
-            "art_spareribs",
-            "art_stamppot",
-            "art_tournedos",
-            "art_vers_van_de_markt",
-            "art_zalmfilet",
+            # "art_bloedworst",
+            # "art_broodplankje",
+            # "art_captain_dinner",
+            # "art_carpaccio",
+            # "art_creme_brulee",
+            # "art_dame_blanche",
+            # "art_garnalen_cocktail",
+            # "art_gehaktbal",
+            # "art_kaasplankje",
+            # "art_kalfslever",
+            # "art_koffie_compleet",
+            # "art_olijven",
+            # "art_poffert",
+            # "art_sate_spies",
+            # "art_schnitzel",
+            # "art_sliptong",
+            # "art_sorbet",
+            # "art_spareribs",
+            # "art_stamppot",
+            # "art_tournedos",
+            # "art_vers_van_de_markt",
+            # "art_zalmfilet",
         ]
 
         # All features that will be numerically processed (imputed and scaled)
@@ -562,92 +562,20 @@ class GuestPredictionLogisticModel:
 
 
 if __name__ == "__main__":
-    # --- Create dummy data for demonstration ---
-    num_samples = 200
+    Xy_df = pd.read_csv("../../../data/cleaned/full_restaurant_data_rank_int.csv", header=0)
 
-    # Generate dates
-    dates_raw = pd.date_range(start="2023-01-01", periods=num_samples, freq="D")
-    dates_iso = dates_raw.to_series().astype(str)  # Convert to ISO string as expected
+    X_df = Xy_df.copy().drop(["GUESTS"], axis=1)
 
-    data = {
-        "Date": dates_iso,
-        # Days of week (simplified, in reality only one would be 1 per row)
-        "is_Friday": np.random.choice([0, 1], num_samples, p=[0.85, 0.15]),
-        "is_Monday": np.random.choice([0, 1], num_samples, p=[0.85, 0.15]),
-        "is_Saturday": np.random.choice([0, 1], num_samples, p=[0.85, 0.15]),
-        "is_Sunday": np.random.choice([0, 1], num_samples, p=[0.85, 0.15]),
-        "is_Thursday": np.random.choice([0, 1], num_samples, p=[0.85, 0.15]),
-        "is_Tuesday": np.random.choice([0, 1], num_samples, p=[0.85, 0.15]),
-        "is_Wednesday": np.random.choice([0, 1], num_samples, p=[0.85, 0.15]),
-        # Holidays
-        "IsHoliday": np.random.choice([0, 1], num_samples, p=[0.9, 0.1]),
-        "Ascension Day": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "Christmas": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "Day of German Unity": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "Easter Monday": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "Good Friday": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "King's Day": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "May Day": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "New Year's Day": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "Second Christmas Day": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        "Whit Monday": np.random.choice([0, 1], num_samples, p=[0.98, 0.02]),
-        # Weather numerical
-        "tempmax": np.random.uniform(5, 30, num_samples),
-        "tempmin": np.random.uniform(0, 20, num_samples),
-        "temp": np.random.uniform(2, 25, num_samples),
-        "feelslikemax": np.random.uniform(3, 32, num_samples),
-        "feelslikemin": np.random.uniform(-2, 18, num_samples),
-        "feelslike": np.random.uniform(0, 28, num_samples),
-        "humidity": np.random.uniform(30, 90, num_samples),
-        "precip": np.random.uniform(0, 10, num_samples),
-        "precipprob": np.random.uniform(0, 100, num_samples),
-        "windspeed": np.random.uniform(0, 40, num_samples),
-        "cloudcover": np.random.uniform(0, 100, num_samples),
-        "solarradiation": np.random.uniform(0, 300, num_samples),
-        "uvindex": np.random.uniform(0, 10, num_samples),
-        # Weather OHE
-        "rain": np.random.choice([0, 1], num_samples, p=[0.7, 0.3]),
-        "snow": np.random.choice([0, 1], num_samples, p=[0.95, 0.05]),
-    }
-    # Article ranks (numerical)
-    art_names = [
-        "art_bloedworst",
-        "art_broodplankje",
-        "art_captain_dinner",
-        "art_carpaccio",
-        "art_creme_brulee",
-        "art_dame_blanche",
-        "art_garnalen_cocktail",
-        "art_gehaktbal",
-        "art_kaasplankje",
-        "art_kalfslever",
-        "art_koffie_compleet",
-        "art_olijven",
-        "art_poffert",
-        "art_sate_spies",
-        "art_schnitzel",
-        "art_sliptong",
-        "art_sorbet",
-        "art_spareribs",
-        "art_stamppot",
-        "art_tournedos",
-        "art_vers_van_de_markt",
-        "art_zalmfilet",
-    ]
-    for art_col in art_names:
-        # Introduce some NaNs for the imputer to handle
-        data[art_col] = np.random.choice(
-            [0, 1, 2, 3, 4, np.nan], num_samples, p=[0.5, 0.1, 0.1, 0.1, 0.1, 0.1]
-        )
+    def transform_value(x):
+        if x <= 260:
+            return int(np.ceil(x / 20.0)) * 20
+        else:
+            return 280
 
-    X_df = pd.DataFrame(data)
+    y_series = pd.Series(Xy_df["GUESTS"].apply(transform_value))
 
-    # Target: number of guests (e.g., 10 to 50 guests, in steps of 5)
-    # These are treated as discrete classes by Logistic Regression.
-    possible_guest_counts = [10, 15, 20, 25, 30, 35, 40, 45, 50]
-    y_series = pd.Series(
-        np.random.choice(possible_guest_counts, size=num_samples), index=X_df.index
-    )
+
+    possible_guest_counts = range(20, 280, 20)
 
     # --- Split data for train/test demonstration ---
     print("\nSplitting data into training and test sets...")

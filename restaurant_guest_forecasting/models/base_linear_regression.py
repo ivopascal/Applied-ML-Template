@@ -4,8 +4,8 @@ import sys
 import os
 from sklearn.metrics import mean_squared_error
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data')))
-from train_test_split import train_val_test_data
-from normalization import normalize_data
+from restaurant_guest_forecasting.data.train_test_split import train_val_test_data
+from  restaurant_guest_forecasting.data.normalization import normalize_data
 
 
 def load_linear_regression():

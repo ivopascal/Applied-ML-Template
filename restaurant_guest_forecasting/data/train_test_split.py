@@ -2,7 +2,6 @@ import pandas as pd
 import os
 from typing import Tuple
 
-
 def train_val_test_data(rank_enc: str = "int") -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Splits restaurant data into training, validation, and test sets.
 

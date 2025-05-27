@@ -22,11 +22,11 @@ class RandomRegressionGuesser:
         """
         self._predicted_value = int(y.mean())
 
-    def predict(self, X_unused: pd.DataFrame) -> int:
+    def predict(self, X: pd.DataFrame) -> int:
         """Predicts the same value (mean of training targets) for all inputs.
 
         Args:
-            X_unused (pd.DataFrame): Input features (not used in prediction).
+            X (pd.DataFrame): Input features (not used in prediction).
 
         Returns:
             int: The predicted value (mean of training targets).
@@ -36,4 +36,4 @@ class RandomRegressionGuesser:
         """
         if self._predicted_value is None:
             raise RuntimeError("The model has not been trained, train it first, then predict.")
-        return self._predicted_value
+        return [self._predicted_value] * len(X)

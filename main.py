@@ -5,16 +5,17 @@ from sudoku_digitalisation.models.CNN import CNN
 from sudoku_digitalisation.models.SVM import SVM
 
 if __name__ == "__main__":
-    # # IF THE DATASET HAS NOT BEEN PREPROCESSED YET, USE:
-    # handler = load_sudoku_dataset("Lexski/sudoku-image-recognition", hugface=True)
-    # preprocessor = DatasetPreprocessor(handler, clip_limit=3, output_size=252)
-    # dataset_dict, digit_dataset = preprocessor.dataset_preprocessing()
-    # preprocessor.handler.save_all_datasets()
+    dataset_is_processed = True  # change this to False if the dataset hasn't been processed and saved
 
-    # IF THE DATASET HAS ALREADY BEEN PREPROCESSED AND SAVED, USE:
-    handler = load_sudoku_dataset()
-    preprocessor = DatasetPreprocessor(handler, clip_limit=3, output_size=252)
-    digit_dataset= handler.datasets['digits']
+    if dataset_is_processed:
+        handler = load_sudoku_dataset()
+        preprocessor = DatasetPreprocessor(handler, clip_limit=3, output_size=252)
+        digit_dataset = handler.datasets['digits']
+    else:
+        handler = load_sudoku_dataset("Lexski/sudoku-image-recognition", hugface=True)
+        preprocessor = DatasetPreprocessor(handler, clip_limit=3, output_size=252)
+        dataset_dict, digit_dataset = preprocessor.dataset_preprocessing()
+        preprocessor.handler.save_all_datasets()
 
     X_train = digit_dataset['train']['image']
     y_train = digit_dataset['train']['label']

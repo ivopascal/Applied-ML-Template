@@ -1,17 +1,5 @@
 import pandas as pd
 
-class RandomRegressionGuesser:
-    def __init__(self) -> None:
-        self._predicted_value = None
-
-    def train(self, X_unused: pd.DataFrame, y: pd.DataFrame) -> None:
-        self._predicted_value = int(y.mean())
-
-    def predict(self, X_unused: pd.DataFrame) -> int:
-        if self._predicted_value is None:
-            raise RuntimeError("The model has not been trained, train it first, then predict.")
-        return self._predicted_value
-    import pandas as pd
 
 class RandomRegressionGuesser:
     """A simple regression model that always predicts the mean of the training targets."""

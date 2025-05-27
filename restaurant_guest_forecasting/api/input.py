@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
+from datetime import datetime
+import pandas as pd
 
 
 class ModelInput(BaseModel):
@@ -37,3 +39,37 @@ class ModelInput(BaseModel):
             "Whit Monday"
         ]
     ]
+
+    def to_df(self) -> pd.DataFrame:
+        # Step 1: Start from base dict
+        base = self.model_dump()
+
+        # Step 2: Construct date
+        date_obj = datetime(self.year, self.month, self.day)
+
+        # Step 3: Add derived time features
+        base["day_of_year"] = date_obj.timetuple().tm_yday
+        base["is_Monday"] = int(date_obj.weekday() == 0)
+        base["is_Tuesday"] = int(date_obj.weekday() == 1)
+        base["is_Wednesday"] = int(date_obj.weekday() == 2)
+        base["is_Thursday"] = int(date_obj.weekday() == 3)
+        base["is_Friday"] = int(date_obj.weekday() == 4)
+        base["is_Saturday"] = int(date_obj.weekday() == 5)
+        base["is_Sunday"] = int(date_obj.weekday() == 6)
+
+        # Step 4: Handle one-hot holiday columns
+        holidays = [
+            "Ascension Day", "Christmas", "Day of German Unity",
+            "Easter Monday", "Good Friday", "King's Day",
+            "May Day", "New Year's Day", "Second Christmas Day",
+            "Whit Monday"
+        ]
+        for h in holidays:
+            base[h] = int(self.holiday == h)
+
+        # Step 5: Remove unused original holiday & date info
+        base.pop("holiday", None)
+        base.pop("day", None)  # no need anymore
+
+        # Step 6: Return DataFrame
+        return pd.DataFrame([base])

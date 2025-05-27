@@ -1,18 +1,33 @@
+# OS-specific files
 .DS_Store
 
-Pipfile.lock
-.idea
+# Python cache
 __pycache__/
-.DS_Store
+*.py[cod]
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data files
 data/cleaned/
 data/raw/
 *.csv
 *.xlsx
 *.pkl
+
+# Virtual environments
 venv/
-__pycache__/
-*.py[cod]
-.ipynb_checkpoints/
+.vscode/
+
+# Pipenv
+Pipfile.lock
+
+# Pytest
 .pytest_cache/
+
+# Pip error logs
 pip-log.txt
 pip-delete-this-directory.txt
+
+# IDE files
+.idea/

@@ -114,7 +114,6 @@ class CNN:
             input = np.expand_dims(input, axis=0)
         else:
             input = self._reshape_data_CNN(input)
-        print(input.shape)
         return self.model.predict(input)
     
     def evaluate(self, X_test: List[Image.Image], y_test: List[int]) -> None:

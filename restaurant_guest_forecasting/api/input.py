@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 from typing import Literal, Optional
 from datetime import datetime
 import pandas as pd
@@ -39,6 +39,8 @@ class ModelInput(BaseModel):
             "Whit Monday"
         ]
     ]
+
+    _invalid_reason: Optional[str] = PrivateAttr(None)
 
     def to_df(self) -> pd.DataFrame:
         # Step 1: Start from base dict
@@ -82,20 +84,22 @@ class ModelInput(BaseModel):
 
             # Logical temperature consistency
             if not self.temp_min <= self.temp <= self.temp_max:
-                self.invalid_reason = \
-                    "self.temp_min <= self.temp <= self.temp_max not satisfied"
+                self._invalid_reason = "temp not between min and max"
                 return False
             if not self.feels_like_min <= self.feels_like <= self.feels_like_max:
-                self.invalid_reason = \
-                    "self.feels_like_min <= self.feels_like <= self.feels_like_max not satisfied"
+                self._invalid_reason = "feels_like not between min and max"
                 return False
 
             # Wind consistency
             if self.wind_gust < self.wind_speed:
-                self.invalid_reason = "self.wind_gust < self.wind_speed"
+                self._invalid_reason = "self.wind_gust < self.wind_speed"
                 return False
 
             return True
         except Exception:
+            self._invalid_reason = "invalid date"
             return False
 
+    @property
+    def invalid_reason(self):
+        return self._invalid_reason

@@ -30,5 +30,5 @@ async def predict_guests(input: ModelInput):
             return {"predicted_guests": prediction}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-    raise HTTPException(status_code=500, detail=str(input.invalid_reason))
+    raise HTTPException(status_code=400, detail=str(input.invalid_reason))
 

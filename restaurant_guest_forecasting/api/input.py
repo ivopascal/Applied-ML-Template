@@ -18,14 +18,14 @@ class ModelInput(BaseModel):
     feels_like_max:    float
     feels_like_min:    float
     feels_like:        float
-    humidity:          float
-    precip:            float
+    humidity:          float = Field(..., ge=0)
+    precip:            float = Field(..., ge=0)
     precip_prob:       int   = Field(..., ge=0, le=100)
-    wind_gust:         float
-    wind_speed:        float
-    cloud_cover:       float
-    solar_radiation:   float
-    uv_index:          int   = Field(..., ge=0)
+    wind_gust:         float = Field(..., ge=0)
+    wind_speed:        float = Field(..., ge=0)
+    cloud_cover:       float = Field(..., ge=0)
+    solar_radiation:   float = Field(..., ge=0)
+    uv_index:          int   = Field(..., ge=0) 
     rain:              int   = Field(..., ge=0, le=1)         
     snow:              int   = Field(..., ge=0, le=1)
     is_school_holiday: int   = Field(..., ge=0, le=1) # IsHoliday column
@@ -73,3 +73,29 @@ class ModelInput(BaseModel):
 
         # Step 6: Return DataFrame
         return pd.DataFrame([base])
+    
+    def is_valid(self) -> bool:
+        """Performs logical validation of the input values."""
+        try:
+            # Valid date
+            datetime(self.year, self.month, self.day)
+
+            # Logical temperature consistency
+            if not self.temp_min <= self.temp <= self.temp_max:
+                self.invalid_reason = \
+                    "self.temp_min <= self.temp <= self.temp_max not satisfied"
+                return False
+            if not self.feels_like_min <= self.feels_like <= self.feels_like_max:
+                self.invalid_reason = \
+                    "self.feels_like_min <= self.feels_like <= self.feels_like_max not satisfied"
+                return False
+
+            # Wind consistency
+            if self.wind_gust < self.wind_speed:
+                self.invalid_reason = "self.wind_gust < self.wind_speed"
+                return False
+
+            return True
+        except Exception:
+            return False
+

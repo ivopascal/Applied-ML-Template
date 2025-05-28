@@ -28,6 +28,7 @@ In this step of the project, we curated the dataset to predict the daily guest a
 3. To make sure validation and test data are well-balanced, we assigned the **even-numbered days** to the **validation set** and the **odd-numbered days** to the **test set**.
 
 ## API
+We created an API that allows users to send input and get a prediction back. It also includes proper input validation and returns clear responses, handling HTTPExceptions when something goes wrong.
 ### Structure
 ```
 restaurant_guest_forecasting/
@@ -37,10 +38,22 @@ restaurant_guest_forecasting/
 │
 ├── models/
 │   ├── random_guesser/
-│   │   └── random_regression_guesser.py   ← simple baseline model
+│   │   └── random_regression_guesser.py   
 │   └── utils/
 │       ├── evaluate_models.py  
 │       ├── load_models.py       
 │       └── used_models.py       
 
 ```
+
+- **app.py**: the main FastAPI application file
+
+- **input.py**: defines the expected input data format using Pydantic
+
+- **random_regression_guesser.py**: implements a Random Regression Guesser that always predicts the average value of the target in the training dataset
+
+- **evaluate_models.py**: runs the given model on the validation data and returns the Mean Squared Error
+  
+- **load_models.py**: loads the saved models 
+
+- **used_models.py**: trains a given model (either the Random Guesser or linear regression), and then saves it

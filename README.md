@@ -26,3 +26,18 @@ In this step of the project, we curated the dataset to predict the daily guest a
 1. We took the **last 365 days** of the dataset for validation and testing.
 2. The rest was used for **training** (about 80% of the total data).
 3. To make sure validation and test data are well-balanced, we assigned the **even-numbered days** to the **validation set** and the **odd-numbered days** to the **test set**.
+
+## API
+### Structure
+restaurant_guest_forecasting/
+├── api/
+│   ├── app.py               ← main FastAPI app (entry point)
+│   ├── input.py             ← defines the input schema using Pydantic
+│
+├── models/
+│   ├── random_guesser/
+│   │   └── random_regression_guesser.py   ← simple baseline model
+│   └── utils/
+│       ├── evaluate_models.py   ← function to compute validation MSE
+│       ├── load_models.py       ← function to load saved models
+│       └── used_models.py       ← function to train and save models

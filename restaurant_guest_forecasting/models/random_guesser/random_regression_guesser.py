@@ -15,7 +15,7 @@ class RandomRegressionGuesser:
         self._predicted_value = None
         self._train_mse = None
 
-    def train(self, X_unused: pd.DataFrame, y: pd.DataFrame) -> None:
+    def fit(self, X_unused: pd.DataFrame, y: pd.DataFrame) -> None:
         """Trains the model by computing the mean of the target variable.
 
         This model ignores the features and always predicts the integer mean of the target.

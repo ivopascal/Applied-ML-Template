@@ -29,15 +29,3 @@ In this step of the project, we curated the dataset to predict the daily guest a
 
 ## API
 ### Structure
-restaurant_guest_forecasting/
-├── api/
-│   ├── app.py               ← main FastAPI app (entry point)
-│   ├── input.py             ← defines the input schema using Pydantic
-│
-├── models/
-│   ├── random_guesser/
-│   │   └── random_regression_guesser.py   ← simple baseline model
-│   └── utils/
-│       ├── evaluate_models.py   ← function to compute validation MSE
-│       ├── load_models.py       ← function to load saved models
-│       └── used_models.py       ← function to train and save models

@@ -29,10 +29,10 @@ In this step of the project, we curated the dataset to predict the daily guest a
 ### Steps we followed
 1. We took the **last 365 days** of the dataset for validation and testing.
 2. The rest was used for **training** (about 80% of the total data).
-3. To make sure validation and test data are well-balanced, we assigned the **even-numbered days** to the **validation set** and the **odd-numbered days** to the **test set**.
+3. To make sure validation and test data are well-balanced, we assigned the **even-numbered days** to the **validation set** and the **odd-numbered days** to the **test set**. Since a week has an even number of days, the validation and test data will alternate in which days will contain.
 
 ## API
-We created an API that allows users to send input and get a prediction back. It also includes proper input validation and returns clear responses, handling HTTPExceptions when something goes wrong.
+We created an API that allows users to send input and get a prediction back, from a trained model. The api offers the option to use and compare two models: random guesser as well as a linear regression model. It also includes proper input validation and returns clear responses, handling HTTPExceptions when something goes wrong.
 
 ### Structure
 ```
@@ -47,7 +47,8 @@ restaurant_guest_forecasting/
 │   └── utils/
 │       ├── evaluate_models.py  
 │       ├── load_models.py       
-│       └── used_models.py       
+│       └── train_models.py
+|       └── saved_models 
 
 ```
 
@@ -61,7 +62,7 @@ restaurant_guest_forecasting/
   
 - **load_models.py**: Loads the saved models.
 
-- **used_models.py**: trains a given model (either the Random Guesser or linear regression), and then saves it.
+- **train_models.py**: trains a given model (either the Random Guesser or linear regression), and then saves it in *saved_models* directory.
 
 ### How to install dependencies and launch the API
 1. Open a terminal
@@ -100,7 +101,7 @@ code here
 ```
 
 ### Endpoints
-- **POST /predict_guests/random**: Predict the number of guests using a random guesser (baseline model that always predicts the average guest count).
+- **POST /predict_guests/random**: Predict the number of guests using a random guesser (baseline model that always predicts the average guest count in the training set).
 **Output**
 ```bash
 code here

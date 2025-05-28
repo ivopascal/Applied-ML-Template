@@ -53,11 +53,13 @@ if __name__ == "__main__":
         cnn = CNN(input_shape=(sudoku_height, sudoku_height, 1), num_classes=10)
         cnn.load("test")
 
-        input_image = digit_dataset['test']['image'][1]
-        plt.imshow(input_image, cmap="gray")
-        plt.show()
+        input_image = [digit_dataset['test']['image'][1], digit_dataset['test']['image'][2]]
+        for image in input_image:
+            plt.imshow(image, cmap="gray")
+            plt.show()
         predictions = cnn.predict(input_image)
         print("Predictions")
         print(predictions)
-        label = np.argmax(predictions)
-        print("Label:", label)
+        for prediction in predictions:
+            label = np.argmax(prediction)
+            print("Label:", label)

@@ -112,7 +112,7 @@ class CNN:
         if isinstance(input, Image.Image):
             input = self._reshape_image_CNN(input)
             input = np.expand_dims(input, axis=0)
-        else:  ##### I don't think it works for lists yet
+        else:
             input = self._reshape_data_CNN(input)
         print(input.shape)
         return self.model.predict(input)

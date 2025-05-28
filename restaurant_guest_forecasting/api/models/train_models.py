@@ -1,9 +1,5 @@
 import os
 import pickle
-import sys
-
-# # Add project root to PYTHONPATH manually
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
 
 from restaurant_guest_forecasting.data.train_test_split import train_val_test_data
 from restaurant_guest_forecasting.data.split_date import split_date

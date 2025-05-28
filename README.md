@@ -47,17 +47,17 @@ restaurant_guest_forecasting/
 
 ```
 
-- **app.py**: the main FastAPI application file
+- **app.py**: The main FastAPI application file.
 
-- **input.py**: defines the expected input data format using Pydantic
+- **input.py**: Defines the expected input data format using Pydantic.
 
-- **random_regression_guesser.py**: implements a Random Regression Guesser that always predicts the average value of the target in the training dataset
+- **random_regression_guesser.py**: Implements a Random Regression Guesser that always predicts the average value of the target in the training dataset.
 
-- **evaluate_models.py**: runs the given model on the validation data and returns the Mean Squared Error
+- **evaluate_models.py**: Runs the given model on the validation data and returns the Mean Squared Error (MSE).
   
-- **load_models.py**: loads the saved models 
+- **load_models.py**: Loads the saved models.
 
-- **used_models.py**: trains a given model (either the Random Guesser or linear regression), and then saves it
+- **used_models.py**: trains a given model (either the Random Guesser or linear regression), and then saves it.
 
 ### How to install dependencies and launch the API
 1. Open a terminal
@@ -86,6 +86,42 @@ code here
 ```
 
 6. Open the API in your own browser
+```bash
+code here
+```
+
+### Expected input format
+```bash
+code here
+```
+
+### Endpoints
+- **POST /predict_guests/random**: Predict the number of guests using a random guesser (baseline model that always predicts the average guest count).
+**Output**
+```bash
+code here
+```
+
+- **POST /predict_guests/model**: Predict the number of guests using a trained Linear Regression model.
+**Output**
+```bash
+code here
+```
+
+- **GET /predict_guests/random/eval**: Returns the validation MSE for the random guesser.
+**Output**
+```bash
+code here
+```
+
+- **GET /predict_guests/model/eval**: Returns the validation MSE for the linear regression model.
+**Output**
+```bash
+code here
+```
+
+- **GET /predict_guests/compare**: Compare validation MSEs for both models.
+**Output**
 ```bash
 code here
 ```

@@ -1,0 +1,15 @@
+import pickle
+import os
+
+from restaurant_guest_forecasting.models.random_guesser.random_regression_guesser import RandomRegressionGuesser
+
+def load_model(model_file_name: str) -> RandomRegressionGuesser:
+    """Load the saved RandomRegressionGuesser model."""
+    model_path = os.path.join(
+        os.path.dirname(__file__), "saved_models", model_file_name
+    )
+
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+
+    return model

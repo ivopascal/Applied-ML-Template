@@ -1,0 +1,23 @@
+Welcome to the Restaurant Guest Forecasting API!
+
+This API helps you predict how many guests will visit a restaurant on a given 
+day, based on weather and calendar data.
+
+You can access the following endpoints:
+
+- POST /predict_guests/random
+Predict the number of guests using a random guesser (baseline model that always predicts the average guest count).
+
+- POST /predict_guests/model
+Predict the number of guests using a trained Linear Regression model.
+
+- GET /predict_guests/random/eval
+Returns the validation MSE for the random guesser.
+
+- GET /predict_guests/model/eval
+Returns the validation MSE for the linear regression model.
+
+- GET /predict_guests/compare
+Compare validation MSEs for both models.
+
+Tip: Visit /docs for interactive documentation.

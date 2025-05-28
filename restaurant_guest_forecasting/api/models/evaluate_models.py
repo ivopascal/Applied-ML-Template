@@ -10,7 +10,7 @@ from restaurant_guest_forecasting.data.split_date import split_date
 
 def validation_mse(model: RandomRegressionGuesser | LinearRegression):
     _, val_data, test_data = train_val_test_data()
-    val_test_data = pd.concat([val_data, test_data], axis=0).sort_values("Date").reset_index(drop=True)
+    val_data = pd.concat([val_data, test_data], axis=0).sort_values("Date").reset_index(drop=True)
     print(val_data.head())
     val_data = split_date(val_data)
 

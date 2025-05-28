@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from restaurant_guest_forecasting.api.input import ModelInput
 from restaurant_guest_forecasting.api.models.load_models import load_random_regression_guesser
 from restaurant_guest_forecasting.api.models.train_models import train_random_regression_guesser
+from restaurant_guest_forecasting.api.models.evaluate_models import validation_mse
 
 app = FastAPI()
 
@@ -16,7 +17,7 @@ def read_root():
 @app.get("/predict_guests/random/eval")
 def random_guest_eval():
     model = load_random_regression_guesser()
-    return {"random_guesser_train_mse": model.train_mse}
+    return {"random_guesser_val_mse": validation_mse(model)}
 
 
 @app.post("/predict_guests/random")

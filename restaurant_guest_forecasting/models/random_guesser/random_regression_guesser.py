@@ -47,6 +47,7 @@ class RandomRegressionGuesser:
         if self._predicted_value is None:
             raise RuntimeError("The model has not been trained, train it first, then predict.")
         return [self._predicted_value] * len(X)
+
     
 
     @property

@@ -29,6 +29,7 @@ In this step of the project, we curated the dataset to predict the daily guest a
 
 ## API
 We created an API that allows users to send input and get a prediction back. It also includes proper input validation and returns clear responses, handling HTTPExceptions when something goes wrong.
+
 ### Structure
 ```
 restaurant_guest_forecasting/
@@ -57,3 +58,34 @@ restaurant_guest_forecasting/
 - **load_models.py**: loads the saved models 
 
 - **used_models.py**: trains a given model (either the Random Guesser or linear regression), and then saves it
+
+### How to install dependencies and launch the API
+1. Open a terminal
+```bash
+code here
+```
+
+2. Create a virtual environment
+```bash
+code here
+```
+
+3. Activate the virtual environment
+```bash
+code here
+```
+
+4. Install dependencies
+```bash
+code here
+```
+
+5. Launch the API
+```bash
+code here
+```
+
+6. Open the API in your own browser
+```bash
+code here
+```

@@ -16,7 +16,11 @@ In this step of the project, we curated the dataset to predict the daily guest a
 - **Menu sales data**: Tracks how many times each dish was ordered each day (used to measure popularity).
   
 ### Steps we followed
-1. We made sure all datasets use the same dates and removed unwanted ones.
+1. We made sure all datasets use the same dates and removed outliers. We considered an outlier to be any date in the covid period (COVID_WINDOWS = [
+    ("2020-03-01", "2020-05-31"),
+    ("2020-12-01", "2021-06-30"),
+    ("2021-11-01", "2022-01-31"),
+]), and any entry with a number of guests that is not in the range (1, 400) (with 400 being an educated guess of restaurant's capacity).
 2. We applied one-hot encoding for categorical variables.
 3. We reorganized and reshaped time-series data.
 4. We took all the menu items, and for each of them, we made a column in which we put their rank, ranging from most-ordered to least-ordered. 

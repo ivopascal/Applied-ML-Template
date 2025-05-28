@@ -29,4 +29,18 @@ In this step of the project, we curated the dataset to predict the daily guest a
 
 ## API
 ### Structure
+```
+restaurant_guest_forecasting/
+├── api/
+│   ├── app.py              
+│   ├── input.py           
+│
+├── models/
+│   ├── random_guesser/
+│   │   └── random_regression_guesser.py   ← simple baseline model
+│   └── utils/
+│       ├── evaluate_models.py  
+│       ├── load_models.py       
+│       └── used_models.py       
 
+```

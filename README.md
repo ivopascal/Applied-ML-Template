@@ -1,4 +1,4 @@
-# Applied ML Final Project 🛠️
+# Applied ML Project 🛠️
 
 ## Data Preprocessing
 In this step of the project, we curated the dataset to predict the daily guest attendance at the restaurant and to rank the menu items by how often they're ordered.

@@ -5,9 +5,12 @@ from sudoku_digitalisation.models.CNN import CNN
 from sudoku_digitalisation.models.SVM import SVM
 import matplotlib.pyplot as plt
 import numpy as np
+import argparse
+from PIL import Image
 
 
 def get_preprocessed_dataset(dataset_is_processed):
+    print("Getting preprocessed dataset")
     # fetches the dataset from local source, if it is already preprocessed
     if dataset_is_processed:
         handler = load_sudoku_dataset()
@@ -22,6 +25,7 @@ def get_preprocessed_dataset(dataset_is_processed):
 
 
 def get_model(train_model, preprocessor):
+    print("Getting model")
     # prevents you from training the models again if it has been trained already
     if train_model:
         X_train = digit_dataset['train']['image']
@@ -51,55 +55,46 @@ def get_model(train_model, preprocessor):
 
 
 def predict_sudoku(cnn, sudoku_sample):
+    print("Predicting")
+    preprocessor = SudokuPreprocessor(clip_limit=3, output_size=252)
+    _, digit_dataset = preprocessor.sudoku_preprocessing(sudoku_sample)
+
+    predictions = cnn.predict(digit_dataset)
+    sudoku_labels = []
+    dimension = int(np.sqrt(len(digit_dataset)))
+    for i in range(dimension):
+        row = []
+        for j in range(dimension):
+            label = np.argmax(predictions[j + (dimension * i)])
+            row.append(int(label))
+        sudoku_labels.append(row)
+
+    for row in sudoku_labels:
+        print(row)
+
     plt.imshow(sudoku_sample, cmap="gray")
     plt.show()
-    preprocessor = SudokuPreprocessor(clip_limit=3, output_size=252)
-    _, digit_dataset = preprocessor.sudoku_preprocessing(sudoku_sample)
-    print("length of dataset:", len(digit_dataset))
-
-    predictions = cnn.predict(digit_dataset)
-    sudoku_labels = []
-    dimension = int(np.sqrt(len(digit_dataset)))
-    for i in range(dimension):
-        row = []
-        for j in range(dimension):
-            label = np.argmax(predictions[j + (dimension * i)])
-            row.append(int(label))
-        sudoku_labels.append(row)
-
-    for row in sudoku_labels:
-        print(row)
-
-
-def predict_sudoku_raw(cnn, sudoku_sample):
-    plt.imshow(sudoku_sample['image'], cmap="gray")
-    plt.show()
-    preprocessor = SudokuPreprocessor(clip_limit=3, output_size=252)
-    _, digit_dataset = preprocessor.sudoku_preprocessing(sudoku_sample)
-    for idx, digit in enumerate(digit_dataset):
-        digit_dataset[idx] = digit["image"]
-    print("length of dataset:", len(digit_dataset))
-
-    predictions = cnn.predict(digit_dataset)
-    sudoku_labels = []
-    dimension = int(np.sqrt(len(digit_dataset)))
-    for i in range(dimension):
-        row = []
-        for j in range(dimension):
-            label = np.argmax(predictions[j + (dimension * i)])
-            row.append(int(label))
-        sudoku_labels.append(row)
-
-    for row in sudoku_labels:
-        print(row)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='This program takes an optional argument for prediction. If no argument is given, the model is trained.')
+    parser.add_argument('path', nargs='?', help='Path to image for prediction. The image should be cropped to the Sudoku.')
+
+    test_image = None
+    args = parser.parse_args()
+    if args.path:
+        print(f"Argument received, digitizing sudoku")
+        train_model = False
+        try:
+            test_image = Image.open(args.path)
+        except Exception as e:
+            print(f"Failed to open image: {e}")
+    else:
+        print("No argument given, training model")
+        train_model = True
+
     digit_dataset, preprocessor, handler = get_preprocessed_dataset(dataset_is_processed=True) # change this to False if the dataset hasn't been processed and saved
-    cnn = get_model(train_model=False, preprocessor=preprocessor)
+    cnn = get_model(train_model, preprocessor)
 
-    #raw_dataset = handler.datasets['raw']
-    #predict_sudoku_raw(cnn, raw_dataset['test'][1])
-
-    raw_dataset = handler.datasets['preprocessed']
-    predict_sudoku(cnn, raw_dataset['test']['image'][1])
+    if test_image:
+        predict_sudoku(cnn, test_image)

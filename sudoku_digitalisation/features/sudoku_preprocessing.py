@@ -23,8 +23,12 @@ class SudokuPreprocessor:
 
     def convert_crop_image(self, image: Image.Image, keypoints: np.ndarray=None) -> Image.Image:
         clahe_img = self.converter.apply_clahe(image)
+        if keypoints is None:
+            height, width = clahe_img.size
+            keypoints = [0, 0, 0, height, width, height, width, 0]
         bbox = self.edge_detector.get_bounding_box(clahe_img, keypoints)
-        return self.cropper.crop_to_box(clahe_img, bbox)
+        cropped_image = self.cropper.crop_to_box(clahe_img, bbox)
+        return cropped_image
 
     def convert_crop_datapoint(self, dp: Dict[str, Any]) -> Dict[str, Any]:
         dp = dp.copy()
@@ -33,7 +37,7 @@ class SudokuPreprocessor:
     
     def sudoku_preprocessing(self, sudoku: Union[Image.Image, Dict[str, Any]]) -> Tuple[Any, Any]:
         if isinstance(sudoku, Image.Image):
-            preprocessed_img = sudoku # self.convert_crop_image(sudoku)
+            preprocessed_img = self.convert_crop_image(sudoku)
             digit_list = SudokuSplitter.split_image(preprocessed_img)
             return preprocessed_img, digit_list
         elif isinstance(sudoku, dict):

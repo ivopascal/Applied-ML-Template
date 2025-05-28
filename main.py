@@ -50,45 +50,56 @@ def get_model(train_model, preprocessor):
     return cnn
 
 
-def predict_image_from_dataset(cnn, digit_dataset):
-    input_image = [digit_dataset['test']['image'][1], digit_dataset['test']['image'][2]]
-    for image in input_image:
-        plt.imshow(image, cmap="gray")
-        plt.show()
-    predictions = cnn.predict(input_image)
-    for prediction in predictions:
-        label = np.argmax(prediction)
-        print("Label:", label)
-
-
 def predict_sudoku(cnn, sudoku_sample):
     plt.imshow(sudoku_sample, cmap="gray")
     plt.show()
-    preprocessor = SudokuPreprocessor(sudoku_sample)
+    preprocessor = SudokuPreprocessor(clip_limit=3, output_size=252)
     _, digit_dataset = preprocessor.sudoku_preprocessing(sudoku_sample)
     print("length of dataset:", len(digit_dataset))
-    predictions = cnn.predict(digit_dataset)
-    labels = []
-    for prediction in predictions:
-        label = np.argmax(prediction)
-        labels.append(int(label))
 
+    predictions = cnn.predict(digit_dataset)
     sudoku_labels = []
-    for i in range(9):
+    dimension = int(np.sqrt(len(digit_dataset)))
+    for i in range(dimension):
         row = []
-        for j in range(9):
-            row.append(labels[j + (9 * i)])
+        for j in range(dimension):
+            label = np.argmax(predictions[j + (dimension * i)])
+            row.append(int(label))
         sudoku_labels.append(row)
 
     for row in sudoku_labels:
         print(row)
 
 
+def predict_sudoku_raw(cnn, sudoku_sample):
+    plt.imshow(sudoku_sample['image'], cmap="gray")
+    plt.show()
+    preprocessor = SudokuPreprocessor(clip_limit=3, output_size=252)
+    _, digit_dataset = preprocessor.sudoku_preprocessing(sudoku_sample)
+    for idx, digit in enumerate(digit_dataset):
+        digit_dataset[idx] = digit["image"]
+    print("length of dataset:", len(digit_dataset))
+
+    predictions = cnn.predict(digit_dataset)
+    sudoku_labels = []
+    dimension = int(np.sqrt(len(digit_dataset)))
+    for i in range(dimension):
+        row = []
+        for j in range(dimension):
+            label = np.argmax(predictions[j + (dimension * i)])
+            row.append(int(label))
+        sudoku_labels.append(row)
+
+    for row in sudoku_labels:
+        print(row)
+
 
 if __name__ == "__main__":
     digit_dataset, preprocessor, handler = get_preprocessed_dataset(dataset_is_processed=True) # change this to False if the dataset hasn't been processed and saved
     cnn = get_model(train_model=False, preprocessor=preprocessor)
 
+    #raw_dataset = handler.datasets['raw']
+    #predict_sudoku_raw(cnn, raw_dataset['test'][1])
+
     raw_dataset = handler.datasets['preprocessed']
     predict_sudoku(cnn, raw_dataset['test']['image'][1])
-

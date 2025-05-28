@@ -33,7 +33,7 @@ class SudokuPreprocessor:
     
     def sudoku_preprocessing(self, sudoku: Union[Image.Image, Dict[str, Any]]) -> Tuple[Any, Any]:
         if isinstance(sudoku, Image.Image):
-            preprocessed_img = sudoku  #self.convert_crop_image(sudoku)
+            preprocessed_img = sudoku # self.convert_crop_image(sudoku)
             digit_list = SudokuSplitter.split_image(preprocessed_img)
             return preprocessed_img, digit_list
         elif isinstance(sudoku, dict):

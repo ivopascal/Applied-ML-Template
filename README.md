@@ -110,7 +110,10 @@ uvicorn restaurant_guest_forecasting.api.app:app --reload
 http://127.0.0.1:8000/
 ```
 
-### Expected input format
+
+### Endpoints
+
+  #### Expected request body format for the POST endpoints
 ```bash
 {
   "day": 1,
@@ -137,7 +140,6 @@ http://127.0.0.1:8000/
 }
 ```
 
-### Endpoints
 - **POST /predict_guests/random**: Predict the number of guests using a Random Guesser (baseline model that always predicts the average guest count in the training set).
 
 **Output example**

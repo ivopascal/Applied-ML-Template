@@ -103,42 +103,46 @@ class MLPBase(ABC, nn.Module):
 
         return outputs
     
+    
 
-class SingleTaskMLP(MLPBase):
+class MultiTaskMLP(MLPBase):
+    """
+    General-purpose MLP model supporting both single-task and multi-task learning.
+
+    This model can handle:
+        - Single-output regression/classification (e.g., output_neurons = [1])
+        - Multi-output regression/classification with multiple heads (e.g., [1, 1], [2, 3])
+    """
     def __init__(self,
                  num_neurons: List[int],
                  droput_rate: float = 0.0,
                  activation: Literal["relu", "tanh", "sigmoid"] = "relu",
-                 output_neurons: int = 1) \
+                 output_neurons: List[int] = [1]) \
                     -> None:
         """
-        The class can be used for multitask as well by jointing the tasks into
-        a vector of length output_neurons.
+        Initializes the MultiTaskMLP model.
+
+        Args:
+            num_neurons (List[int]): List of neuron counts per hidden layer, including input.
+                                    Example: [10, 64, 32]
+            droput_rate (float): Dropout probability to apply after each hidden layer (default: 0.0).
+            activation (str): Activation function to use in hidden layers. One of: "relu", "tanh", "sigmoid".
+            output_neurons (List[int]): A list where each element defines the output size for one task.
+                                    Example:
+                                          - [1]    -> single-task regression
+                                          - [1, 1] -> two-task regression (two heads)
         """
-        
         super().__init__(num_neurons, droput_rate, activation)
         self.output_neurons = output_neurons
 
 
     def _output_layers(self):
-        # Single value predictiton
-        output_layer = nn.Linear(self.num_neurons[-1], self.output_neurons)
-        return (output_layer,)
-    
-    
+        """
+        Creates one output head per task using `output_neurons`.
 
-class MultiTaskMLP(MLPBase):
-    def __init__(self,
-                 num_neurons: List[int],
-                 droput_rate: float = 0.0,
-                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
-                    -> None:
-        
-        super().__init__(num_neurons, droput_rate, activation)
-
-
-    def _output_layers(self):
-        # Split the model into two output heads
-        output_layer_task1 = nn.Linear(self.num_neurons[-1], 1)
-        output_layer2 = nn.Linear(self.num_neurons[-1], 1)
-        return (output_layer_task1, output_layer2)
+        Returns:
+            Tuple[nn.Module]: Tuple of output layers, one per task.
+        """
+        output_layers = [nn.Linear(self.num_neurons[-1], out_neurons) \
+                         for out_neurons in self.output_neurons]
+        return tuple(output_layers)

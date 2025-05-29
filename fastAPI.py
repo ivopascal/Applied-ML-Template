@@ -6,12 +6,31 @@ from PIL import Image
 from io import BytesIO
 from sudoku_digitalisation.features.sudoku_preprocessing import SudokuPreprocessor
 from sudoku_digitalisation.models.CNN import CNN
+from pydantic import BaseModel
+from typing import List
 
-app = FastAPI()
+app = FastAPI(
+    title = "Sudoku digitizer",
+    summary = "an API endpoint to take in a sudoku and give the corresponding 9x9 representing the sudoku",
+    description = """
+# An API endpoint to access a CNN
+# Model usage
+The CNN was trained on a combination of digits in different fonts and some handwritten.
+It takes these images by cropping sudokus that were fed to it.
+The API takes in an already cropped image of a sudoku and returns a 9x9 matrix representing the numbers inside the sudoku, 0 means an empty square.
+
+## Limitations
+The model cannot predict the small numbers that are used in sudokus, 
+however these should not impact the prediction.""",
+version = "alpha"
+)
 
 # Constants
-MODEL_PATH = "sudoku_cnn.keras"
+MODEL_PATH = "sudoku_cnn"
 OUTPUT_SIZE = 252
+
+class SudokuPredictions(BaseModel):
+    predictions: List[List[int]]
 
 
 def load_model(model_path=MODEL_PATH, output_size=OUTPUT_SIZE):
@@ -45,7 +64,11 @@ def predict_sudoku(cnn, image: Image.Image, output_size=OUTPUT_SIZE):
 cnn_model = load_model()
 
 
-@app.post("/predict/")
+@app.post("/predict/", description = "Sudoku digitizer endpoint. Upload picture of already cropped sudoku."
+                                    "Picture has to be .png, .jpg or .jpeg."
+                                    "Returns 9x9 matrix representing the uploaded sudoku with 0 being an empty space.",
+                        response_model = SudokuPredictions,
+                        response_description = "digitised version of uploaded sudoku, in the form of a 9x9 matrix.")
 async def predict(file: UploadFile = File(...)):
     if not file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
         raise HTTPException(status_code=400, detail="Only image files (.png, .jpg, .jpeg) are accepted")

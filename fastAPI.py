@@ -11,11 +11,10 @@ from typing import List
 
 app = FastAPI(
     title = "Sudoku digitizer",
-    summary = "an API endpoint to take in a sudoku and give the corresponding 9x9 representing the sudoku",
+    summary = "an API that takes in a sudoku and give the corresponding 9x9 representing the sudoku",
     description = """
-# An API endpoint to access a CNN
 # Model usage
-The CNN was trained on a combination of digits in different fonts and some handwritten.
+The model is a CNN was trained on a combination of digits in different fonts and some handwritten.
 It takes these images by cropping sudokus that were fed to it.
 The API takes in an already cropped image of a sudoku and returns a 9x9 matrix representing the numbers inside the sudoku, 0 means an empty square.
 
@@ -65,8 +64,8 @@ cnn_model = load_model()
 
 
 @app.post("/predict/", description = "Sudoku digitizer endpoint. Upload picture of already cropped sudoku."
-                                    "Picture has to be .png, .jpg or .jpeg."
-                                    "Returns 9x9 matrix representing the uploaded sudoku with 0 being an empty space.",
+                                    " Picture has to be .png, .jpg or .jpeg."
+                                    " Returns 9x9 matrix representing the uploaded sudoku with 0 being an empty space.",
                         response_model = SudokuPredictions,
                         response_description = "digitised version of uploaded sudoku, in the form of a 9x9 matrix.")
 async def predict(file: UploadFile = File(...)):

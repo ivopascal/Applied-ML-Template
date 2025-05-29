@@ -1,4 +1,4 @@
-import os
+from keras import Sequential
 from sudoku_digitalisation.features.sudoku_preprocessing import DatasetPreprocessor, SudokuPreprocessor
 from sudoku_digitalisation.features.dataset_handler import load_sudoku_dataset
 from sudoku_digitalisation.models.CNN import CNN
@@ -9,24 +9,22 @@ import argparse
 from PIL import Image
 
 
-def get_preprocessed_dataset(dataset_is_processed):
+def get_preprocessed_dataset(is_preprocessed: bool = False):
     print("Getting preprocessed dataset")
     # fetches the dataset from local source, if it is already preprocessed
-    if dataset_is_processed:
+    if is_preprocessed:
         handler = load_sudoku_dataset()
         preprocessor = DatasetPreprocessor(handler, clip_limit=3, output_size=252)
-        digit_dataset = handler.datasets['digits']
     else:
         handler = load_sudoku_dataset("Lexski/sudoku-image-recognition", hugface=True)
         preprocessor = DatasetPreprocessor(handler, clip_limit=3, output_size=252)
-        dataset_dict, digit_dataset = preprocessor.dataset_preprocessing()
         preprocessor.handler.save_all_datasets()
-    return digit_dataset, preprocessor, handler  # ok so I think this can be done cleaner but I want to focus on task rn
+    return preprocessor
 
 
-def get_model(train_model, preprocessor):
+def get_model(preprocessor: DatasetPreprocessor, train_model: bool = False):
     print("Getting model")
-    # prevents you from training the models again if it has been trained already
+    digit_dataset = preprocessor.handler.datasets['digits']
     if train_model:
         X_train = digit_dataset['train']['image']
         y_train = digit_dataset['train']['label']
@@ -46,15 +44,15 @@ def get_model(train_model, preprocessor):
         cnn = CNN(input_shape=(sudoku_height, sudoku_height, 1), num_classes=10)
         cnn.train(X_train, y_train, X_val, y_val, verbose=1)
         cnn.evaluate(X_test, y_test)
+        cnn.save("sudoku_cnn")
     else:
         sudoku_height = preprocessor.cropper.output_size // 9
         cnn = CNN(input_shape=(sudoku_height, sudoku_height, 1), num_classes=10)
-        print("it gets here")
         cnn.load("sudoku_cnn")
     return cnn
 
 
-def predict_sudoku(cnn, sudoku_sample):
+def predict_sudoku(cnn: Sequential, sudoku_sample: Image.Image):
     print("Predicting")
     preprocessor = SudokuPreprocessor(clip_limit=3, output_size=252)
     _, digit_dataset = preprocessor.sudoku_preprocessing(sudoku_sample)
@@ -93,8 +91,8 @@ if __name__ == "__main__":
         print("No argument given, training model")
         train_model = True
 
-    digit_dataset, preprocessor, handler = get_preprocessed_dataset(dataset_is_processed=True) # change this to False if the dataset hasn't been processed and saved
-    cnn = get_model(train_model, preprocessor)
+    preprocessor = get_preprocessed_dataset(is_preprocessed=True) # change this to False if the dataset hasn't been processed and saved
+    cnn = get_model(preprocessor, train_model)
 
     if test_image:
         predict_sudoku(cnn, test_image)

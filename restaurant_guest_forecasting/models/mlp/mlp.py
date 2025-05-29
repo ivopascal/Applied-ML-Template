@@ -108,35 +108,26 @@ class SingleTaskMLP(MLPBase):
     def __init__(self,
                  num_neurons: List[int],
                  droput_rate: float = 0.0,
-                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
+                 activation: Literal["relu", "tanh", "sigmoid"] = "relu",
+                 output_neurons: int = 1) \
                     -> None:
+        """
+        The class can be used for multitask as well by jointing the tasks into
+        a vector of length output_neurons.
+        """
         
         super().__init__(num_neurons, droput_rate, activation)
+        self.output_neurons = output_neurons
 
 
     def _output_layers(self):
         # Single value predictiton
-        output_layer = nn.Linear(self.num_neurons[-1], 1)
+        output_layer = nn.Linear(self.num_neurons[-1], self.output_neurons)
         return (output_layer,)
     
-
-class MultiTaskSingleHeadMLP(MLPBase):
-    def __init__(self,
-                 num_neurons: List[int],
-                 droput_rate: float = 0.0,
-                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
-                    -> None:
-        
-        super().__init__(num_neurons, droput_rate, activation)
-
-
-    def _output_layers(self):
-        # Predict both tasks at in one vector
-        output_layer = nn.Linear(self.num_neurons[-1], 2)
-        return (output_layer,)
     
 
-class MultiTaskMultiHeadMLP(MLPBase):
+class MultiTaskMLP(MLPBase):
     def __init__(self,
                  num_neurons: List[int],
                  droput_rate: float = 0.0,

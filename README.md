@@ -36,7 +36,7 @@ In this step of the project, we curated the dataset to predict the daily guest a
 3. To make sure validation and test data are well-balanced, we assigned the **even-numbered days** to the **validation set** and the **odd-numbered days** to the **test set**. Since a week has an even number of days, the validation and test data will alternate in which days will contain.
 
 ## API
-We created an API that allows users to send input and get a prediction back, from a trained model. The api offers the option to use and compare two models: random guesser as well as a linear regression model. It also includes proper input validation and returns clear responses, handling HTTPExceptions when something goes wrong.
+We created an API that allows users to send an input and get a prediction back, from a trained model. The API offers the option to use and compare two models: a Random Guesser as well as a Linear Regression Model. It also includes proper input validation and returns clear responses, handling HTTPExceptions when something goes wrong.
 
 ### Structure
 ```

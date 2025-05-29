@@ -7,35 +7,44 @@ from restaurant_guest_forecasting.models.mlp.activation_factory import\
 
 from collections import OrderedDict
 
+from abc import ABC, abstractmethod
 
-class MLP(nn.Module):
+
+class MLPBase(ABC, nn.Module):
+    """
+    Abstract base class for MLP models, providing shared architecture construction
+    and requiring subclasses to define their own output layers.
+    """
     def __init__(self,
                  num_neurons: List[int],
                  droput_rate: float = 0.0,
-                 activation: Literal["relu", "tanh", "sigmoid"] = "relu",
-                 output_neurons:int = 1) \
+                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
                     -> None:
         """
-        Initializes the MLP.
+        Initializes the core MLP structure (excluding the output layer).
 
         Args:
             num_neurons (List[int]): List of neurons per layer including input,
                                      but excluding output layer.
             droput_rate (float): Dropout rate between layers (default is 0.0).
             activation (str): Activation function ("relu", "tanh", "sigmoid").
-            output_neurons (int): Number of neurons in the final output layer.
         """
         super().__init__()
-        self.model = MLP._model()
-        self.output_layer = nn.Linear(num_neurons[-1], output_neurons)                       
+
+        self.num_neurons = num_neurons
+        self.dropout_rate = droput_rate
+        self.actication = activation
+
+        self.model = MLPBase._model(num_neurons, droput_rate, activation)
+        self.output_layer = MLPBase._output_layer()                       
 
     @staticmethod
     def _model(num_neurons: List[int], 
                droput_rate: float = 0.0,
-               activation: str = Literal["relu", "tanh", "sigmoid"] = "relu")\
+               activation: Literal["relu", "tanh", "sigmoid"] = "relu")\
          -> nn.Sequential:
         """
-        Constructs the sequential MLP model.
+        Constructs the sequential MLP model, i.e. input & hidden layers.
 
         Args:
             num_neurons (List[int]): List of neurons per layer.
@@ -43,7 +52,7 @@ class MLP(nn.Module):
             activation (str): Activation function to apply between layers.
 
         Returns:
-            nn.Sequential: The MLP model.
+            nn.Sequential: The MLP model excluding the output layers.
         """
         modules_dict = OrderedDict()   # Store the modules to initialize Sequential     
         
@@ -61,17 +70,27 @@ class MLP(nn.Module):
         model = nn.Sequential(modules_dict)
         return model
             
+    @abstractmethod
+    def _output_layer(self) -> nn.Module:
+        """
+        Abstract method for defining the final output layer.
 
+        Must be implemented by subclasses.
 
-    def forward(self, x: torch.Tensor):
-            """
-            Forward pass of the MLP.
+        Returns:
+            nn.Module: The output layer (e.g., Linear, Softmax, etc.).
+        """
+        pass
 
-            Args:
-                x (torch.Tensor): Input tensor of shape (batch_size, num_features).
+    def forward(self, x):
+        """
+        Runs a forward pass through the hidden layers and output layer.
 
-            Returns:
-                torch.Tensor: Output tensor of shape (batch_size, output_neurons).
-            """
-            x = self.model(x)
-            return self.output_layer(x)
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Model output.
+        """
+        x = self.model(x)
+        return self.output_layer(x)

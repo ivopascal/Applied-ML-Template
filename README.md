@@ -1,6 +1,6 @@
 # Sudoku digitisation CNN
 
-Our model takes a sudoku and returns the digitised version of the sudoku as a 9x9 matrix. It uses a CNN on every individual cell in the sudoku in order to classify the number.
+Our model takes an image of a sudoku as input, predicts the digits in each cell and returns a digitised version of the sudoku as a 9x9 matrix. For the prediction the sudoku grid is split into its individual cells such that each digit can be classified individually using a CNN
 
 ## Prerequisites
 

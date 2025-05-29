@@ -36,7 +36,7 @@ In this step of the project, we curated the dataset to predict the daily guest a
 3. To make sure validation and test data are well-balanced, we assigned the **even-numbered days** to the **validation set** and the **odd-numbered days** to the **test set**. Since a week has an even number of days, the validation and test data will alternate in which days will contain.
 
 ## Deployment Models
-In this step of the project, we trained and saved two models (a Random Guesser and a Linear Regression Model), that predict how many guests will visit a restaurant on a given day. 
+In this step of the project, we trained and saved two models (a Random Guesser and a Linear Regression Model) that predict how many guests will visit a restaurant on a given day. 
 
 ### Steps we followed
 1. We started the process by loading the data, which has already been split into training, validation and test sets (as explained before). However, we only used the training and validation data for now.
@@ -82,37 +82,59 @@ restaurant_guest_forecasting/
 ### How to install dependencies and launch the API
 1. Open a terminal
 ```bash
-code here
+cd path/to/Applied-ML-Restaurant_Guests_Forcasting
 ```
 
 2. Create a virtual environment
 ```bash
-code here
+python -m venv venv
 ```
 
 3. Activate the virtual environment
 ```bash
-code here
+venv\Scripts\activate
 ```
 
 4. Install dependencies
 ```bash
-code here
+pip install -r requirements.txt
 ```
 
 5. Launch the API
 ```bash
-code here
+uvicorn restaurant_guest_forecasting.api.app:app --reload
 ```
 
 6. Open the API in your own browser
 ```bash
-code here
+http://127.0.0.1:8000/
 ```
 
 ### Expected input format
 ```bash
-code here
+{
+  "day": 1,
+  "month": 1,
+  "year": 2019,
+  "temp_max": 0,
+  "temp_min": 0,
+  "temp": 0,
+  "feels_like_max": 0,
+  "feels_like_min": 0,
+  "feels_like": 0,
+  "humidity": 0,
+  "precip": 0,
+  "precip_prob": 100,
+  "wind_gust": 0,
+  "wind_speed": 0,
+  "cloud_cover": 0,
+  "solar_radiation": 0,
+  "uv_index": 0,
+  "rain": 1,
+  "snow": 1,
+  "is_school_holiday": 1,
+  "holiday": "Ascension Day"
+}
 ```
 
 ### Endpoints
@@ -120,33 +142,46 @@ code here
 
 **Output example**
 ```bash
-code here
+{
+  "predicted_guests": "96.00"
+}
 ```
 
 - **POST /predict_guests/model**: Predict the number of guests using a trained Linear Regression model.
 
 **Output example**
 ```bash
-code here
+{
+  "predicted_guests": "150.02"
+}
 ```
 
 - **GET /predict_guests/random/eval**: Returns the validation MSE for the random guesser.
 
 **Output example**
 ```bash
-code here
+{
+  "random_guesser_val_mse": "1555.73"
+}
 ```
 
 - **GET /predict_guests/model/eval**: Returns the validation MSE for the linear regression model.
 
 **Output example**
 ```bash
-code here
+{
+  "model_val_mse": "1031.31"
+}
 ```
 
 - **GET /predict_guests/compare**: Compare validation MSEs for both models.
 
 **Output example**
 ```bash
-code here
+{
+  "random_guess_val_mse": "1555.73",
+  "model_val_mse": "1031.31"
+}
 ```
+
+- **/docs**: Leads to API documentation in Swagger.

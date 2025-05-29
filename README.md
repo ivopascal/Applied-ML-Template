@@ -1,7 +1,11 @@
 # Applied ML Project 🛠️
 
+## Description of the project
+Running a restaurant comes with high costs and complex logistics. Two major challenges are managing inventory to avoid waste and scheduling staff efficiently. While many restaurants keep track of reservations and actual guest counts, it's still tough to predict future demand accurately without the help of advanced tools. For this project, we will focus on solving a real-world problem in colaboration with "Weeva" restaurant, where one of our team members works. Our main goal is to build a model that helps predict how many guests the restaurant will have on a given day. If time allows, we’d also like to explore which menu items are most frequently ordered. We believe that factors like weather, the day of the week, and reservation counts are the key when making reliable predictions.
+
+
 ## Data Preprocessing
-In this step of the project, we curated the dataset to predict the daily guest attendance at the restaurant and to rank the menu items by how often they're ordered.
+In this step of the project, we curated the dataset to predict the daily guest attendance at the restaurant and to rank the menu items by how often they're ordered. 
 
 - **Guest data**: Records daily attendance of people at the restaurant.
 

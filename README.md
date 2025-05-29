@@ -40,7 +40,7 @@ In this step of the project, we trained and saved two models (a Random Guesser a
 
 ### Steps we followed
 1. We started the process by loading the data, which has already been split into training, validation and test sets (as explained before). However, we only used the training and validation data for now.
-2. Then, we took the date column and broke it down into useful features, such as the year, month, and day of the year, to make the model understand things like seasonal trends or holidays without needing the raw date.
+2. Then, we took the date column and broke it down into useful features, such as the year, month, and day of the year, to make the model understand things like seasonal trends or holidays, without needing the raw date.
 3. As a next step, we trained each model using the training data. Once a model was trained, we saved it to a file, so we don’t need to retrain it every time we want to use it.
 4. Since we had evaluation turned on by default, we also tested how well each model performed. We did this by calculating the Mean Squared Error (MSE), which told us how far off the predictions were from the actual number of guests.
 

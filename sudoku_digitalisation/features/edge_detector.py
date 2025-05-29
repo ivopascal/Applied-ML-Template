@@ -1,5 +1,6 @@
 from PIL import Image
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class EdgeDetector:
@@ -25,5 +26,6 @@ class EdgeDetector:
         if keypoints != None:
             return self._known_keypoints_bb(keypoints)
         else:
-            # PERFORM EDGE DETECTION TO GET BOUNDING BOX
-            pass
+            height, width = image.size
+            keypoints = [0, 0, 0, height, width, height, width, 0]
+            return self._known_keypoints_bb(keypoints)

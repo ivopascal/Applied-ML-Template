@@ -111,6 +111,7 @@ class CNN:
         '''
         if isinstance(input, Image.Image):
             input = self._reshape_image_CNN(input)
+            input = np.expand_dims(input, axis=0)
         else:
             input = self._reshape_data_CNN(input)
         return self.model.predict(input)
@@ -168,7 +169,13 @@ class CNN:
 
     def save(self, name: str, path: str=None) -> None:
         if path is None:
-            path = os.path.join("sudoku_digitalisation", "data", "models")
+            path = os.path.join("sudoku_digitalisation", "models", "saved")
         os.makedirs(path, exist_ok=True)
         save_path = os.path.join(path, f"{name}.keras")
         self.model.save(save_path)
+
+    def load(self, name: str, path: str=None) -> None:
+        if path is None:
+            path = os.path.join("sudoku_digitalisation", "models", "saved")
+        load_path = os.path.join(path, f"{name}.keras")
+        self.model = keras.models.load_model(load_path)

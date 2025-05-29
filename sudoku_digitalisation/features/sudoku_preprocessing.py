@@ -24,7 +24,8 @@ class SudokuPreprocessor:
     def convert_crop_image(self, image: Image.Image, keypoints: np.ndarray=None) -> Image.Image:
         clahe_img = self.converter.apply_clahe(image)
         bbox = self.edge_detector.get_bounding_box(clahe_img, keypoints)
-        return self.cropper.crop_to_box(clahe_img, bbox)
+        cropped_image = self.cropper.crop_to_box(clahe_img, bbox)
+        return cropped_image
 
     def convert_crop_datapoint(self, dp: Dict[str, Any]) -> Dict[str, Any]:
         dp = dp.copy()

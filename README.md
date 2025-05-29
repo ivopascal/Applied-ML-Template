@@ -49,10 +49,10 @@ restaurant_guest_forecasting/
 │   ├── random_guesser/
 │   │   └── random_regression_guesser.py   
 │   └── utils/
-│       ├── evaluate_models.py  
-│       ├── load_models.py       
+│   |   ├── evaluate_models.py  
+│   |   ├── load_models.py       
 │       └── train_models.py
-|       └── saved_models 
+|       └── saved_models.py 
 
 ```
 
@@ -66,7 +66,9 @@ restaurant_guest_forecasting/
   
 - **load_models.py**: Loads the saved models.
 
-- **train_models.py**: trains a given model (either the Random Guesser or linear regression), and then saves it in *saved_models* directory.
+- **train_models.py**: Trains a given model (either the Random Guesser or the Linear Regression), and then saves it in *saved_models* directory.
+
+- **saved_models.py**: Contains all the saved models.
 
 ### How to install dependencies and launch the API
 1. Open a terminal

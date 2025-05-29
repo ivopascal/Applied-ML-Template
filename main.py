@@ -46,11 +46,11 @@ def get_model(train_model, preprocessor):
         cnn = CNN(input_shape=(sudoku_height, sudoku_height, 1), num_classes=10)
         cnn.train(X_train, y_train, X_val, y_val, verbose=1)
         cnn.evaluate(X_test, y_test)
-        cnn.save("test")
     else:
         sudoku_height = preprocessor.cropper.output_size // 9
         cnn = CNN(input_shape=(sudoku_height, sudoku_height, 1), num_classes=10)
-        cnn.load("test")
+        print("it gets here")
+        cnn.load("sudoku_cnn")
     return cnn
 
 

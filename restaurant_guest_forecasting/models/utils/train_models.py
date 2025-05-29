@@ -29,6 +29,10 @@ def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
     X_train, y_train = train_data.drop(columns=['GUESTS']), train_data['GUESTS']
     X_val, y_val = val_data.drop(columns=['GUESTS']), val_data['GUESTS']
 
+    # Order the columns, so the order always matches
+    X_train = X_train.reindex(sorted(X_train.columns), axis=1)
+    X_val = X_val.reindex(sorted(X_val.columns), axis=1)
+
     # Train model
     model.fit(X_train, y_train)
 

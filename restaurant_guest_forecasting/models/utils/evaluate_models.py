@@ -12,6 +12,9 @@ def validation_mse(model: RandomRegressionGuesser | LinearRegression):
     _, val_data, _ = train_val_test_data()
     val_data = split_date(val_data, drop_date=True)
 
+    # Order the columns, so the order always matches
+    val_data = val_data.reindex(sorted(val_data.columns), axis=1)
+
     X, y = val_data.drop(columns=['GUESTS']), val_data['GUESTS']
 
     predictions = model.predict(X)

@@ -19,6 +19,7 @@ def _predict_guests(model: LinearRegression | RandomRegressionGuesser,
                    input: ModelInput):
     if input.is_valid():
         input_df = input.to_df()
+        print(input_df.columns)
         return model.predict(input_df) 
     raise RuntimeError(input.invalid_reason)
 
@@ -64,20 +65,20 @@ async def linear_regression_guest_eval():
 
 
 @app.post("/predict_guests/random")
-async def predict_guests(input: ModelInput):
+async def predict_guests_rand(input: ModelInput):
     model = load_model("random_regression_guesser.pkl")
     try:
-        prediction = _predict_guests(model)
-        return {"predicted_guests": f"{prediction:.2f}"}
+        prediction = _predict_guests(model, input)
+        return {"predicted_guests": f"{prediction[0]:.2f}"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/predict_guests/model")
-async def predict_guests(input: ModelInput):
+async def predict_guests_model(input: ModelInput):
     model = load_model("linear_regression.pkl")
     try:
-        prediction = _predict_guests(model)
-        return {"predicted_guests": f"{prediction:.2f}"}
+        prediction = _predict_guests(model, input)
+        return {"predicted_guests": f"{prediction[0]:.2f}"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

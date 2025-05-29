@@ -2,7 +2,8 @@ import pandas as pd
 import os
 from typing import Tuple
 
-def train_val_test_data(rank_enc: str = "int") -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def train_val_test_data(rank_enc: str = "int", regression: bool = True) \
+                          -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Splits restaurant data into training, validation, and test sets.
 
     The function loads preprocessed restaurant data with either integer or 
@@ -40,6 +41,12 @@ def train_val_test_data(rank_enc: str = "int") -> Tuple[pd.DataFrame, pd.DataFra
         raise ValueError("`rank_enc` must be either 'int' or 'onehot'")
 
     num_rows = data.shape[0]
+
+    if regression:
+        data = data.drop(columns=[col for col in data.columns if col.startswith("art_")], errors='ignore')
+    else:
+        data = data.drop(columns=["GUESTS"], errors='ignore')
+        
 
     train_df = data.head(num_rows - size_val_test).reset_index(drop=True)
     val_test_data = data.tail(size_val_test).reset_index(drop=True)

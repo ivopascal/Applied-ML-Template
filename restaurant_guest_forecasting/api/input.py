@@ -73,8 +73,30 @@ class ModelInput(BaseModel):
         base.pop("holiday", None)
         base.pop("day", None)  # no need anymore
 
-        # Step 6: Return DataFrame
-        return pd.DataFrame([base])
+        # Step 6: Rename keys to match training feature names
+        rename_map = {
+            "temp_max": "tempmax",
+            "temp_min": "tempmin",
+            "feels_like_max": "feelslikemax",
+            "feels_like_min": "feelslikemin",
+            "feels_like": "feelslike",
+            "cloud_cover": "cloudcover",
+            "solar_radiation": "solarradiation",
+            "uv_index": "uvindex",
+            "precip_prob": "precipprob",
+            "wind_gust": "windgust",
+            "wind_speed": "windspeed",
+            "is_school_holiday": "IsHoliday",
+        }
+
+        for old_name, new_name in rename_map.items():
+            base[new_name] = base.pop(old_name)
+
+        df = pd.DataFrame([base])
+        # Order the columns, so the order always matches
+        df = df.reindex(sorted(df.columns), axis=1)
+        return df
+
     
     def is_valid(self) -> bool:
         """Performs logical validation of the input values."""

@@ -1,0 +1,14 @@
+tensorflow
+keras
+Pillow
+opencv-python
+fastapi
+tqdm
+numpy
+scikit-learn
+typing
+uvicorn
+python-multipart
+pydantic
+datasets
+matplotlib

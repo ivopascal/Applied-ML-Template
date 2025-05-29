@@ -19,7 +19,6 @@ def _predict_guests(model: LinearRegression | RandomRegressionGuesser,
                    input: ModelInput):
     if input.is_valid():
         input_df = input.to_df()
-        print(input_df.columns)
         return model.predict(input_df) 
     raise RuntimeError(input.invalid_reason)
 

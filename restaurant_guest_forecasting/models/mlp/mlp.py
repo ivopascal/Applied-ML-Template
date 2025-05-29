@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import List, Literal
+from typing import List, Literal, Tuple
 
 from restaurant_guest_forecasting.models.mlp.activation_factory import\
       ActivationFactory
@@ -33,10 +33,11 @@ class MLPBase(ABC, nn.Module):
 
         self.num_neurons = num_neurons
         self.dropout_rate = droput_rate
-        self.actication = activation
+        self.activation = activation
 
         self.model = MLPBase._model(num_neurons, droput_rate, activation)
-        self.output_layer = MLPBase._output_layer()                       
+        self.output_layers = self._output_layers()   
+        
 
     @staticmethod
     def _model(num_neurons: List[int], 
@@ -60,31 +61,35 @@ class MLPBase(ABC, nn.Module):
             in_neurons_i = num_neurons[i]
             out_neurons_i = num_neurons[i + 1]
 
-            modules_dict[f"linear_{i}",
-                          nn.Linear(in_neurons_i, out_neurons_i)]
-            modules_dict[f"{activation}_{i}",
-                          ActivationFactory.activation(activation_name=activation)]
-            modules_dict[f"dropout_{i}",
-                          nn.Dropout(droput_rate)]
+            modules_dict[f"linear_{i}"] = \
+                          nn.Linear(in_neurons_i, out_neurons_i)
+            modules_dict[f"{activation}_{i}"] = \
+                          ActivationFactory.activation(activation_name=activation)
+            modules_dict[f"dropout_{i}"] = \
+                          nn.Dropout(droput_rate)
             
         model = nn.Sequential(modules_dict)
         return model
             
     @abstractmethod
-    def _output_layer(self) -> nn.Module:
+    def _output_layers(self) -> Tuple[nn.Module]:
         """
         Abstract method for defining the final output layer.
 
         Must be implemented by subclasses.
 
+        Note: Can be extended for more than two tasks.
+
         Returns:
-            nn.Module: The output layer (e.g., Linear, Softmax, etc.).
+            Tuple[nn.Module]: Output layers in case the model 
+                            splits (for multitask-learning). For single task,
+                            the tuple contains only one element.
         """
         pass
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         """
-        Runs a forward pass through the hidden layers and output layer.
+        Runs a forward pass through the hidden layers and output layers.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -93,4 +98,56 @@ class MLPBase(ABC, nn.Module):
             torch.Tensor: Model output.
         """
         x = self.model(x)
-        return self.output_layer(x)
+
+        outputs = [output_layer(x) for output_layer in self.output_layers]
+
+        return outputs
+    
+
+class SingleTaskMLP(MLPBase):
+    def __init__(self,
+                 num_neurons: List[int],
+                 droput_rate: float = 0.0,
+                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
+                    -> None:
+        
+        super().__init__(num_neurons, droput_rate, activation)
+
+
+    def _output_layers(self):
+        # Single value predictiton
+        output_layer = nn.Linear(self.num_neurons[-1], 1)
+        return (output_layer,)
+    
+
+class MultiTaskSingleHeadMLP(MLPBase):
+    def __init__(self,
+                 num_neurons: List[int],
+                 droput_rate: float = 0.0,
+                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
+                    -> None:
+        
+        super().__init__(num_neurons, droput_rate, activation)
+
+
+    def _output_layers(self):
+        # Predict both tasks at in one vector
+        output_layer = nn.Linear(self.num_neurons[-1], 2)
+        return (output_layer,)
+    
+
+class MultiTaskMultiHeadMLP(MLPBase):
+    def __init__(self,
+                 num_neurons: List[int],
+                 droput_rate: float = 0.0,
+                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
+                    -> None:
+        
+        super().__init__(num_neurons, droput_rate, activation)
+
+
+    def _output_layers(self):
+        # Split the model into two output heads
+        output_layer_task1 = nn.Linear(self.num_neurons[-1], 1)
+        output_layer2 = nn.Linear(self.num_neurons[-1], 1)
+        return (output_layer_task1, output_layer2)

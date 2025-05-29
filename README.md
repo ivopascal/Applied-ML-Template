@@ -110,7 +110,10 @@ uvicorn restaurant_guest_forecasting.api.app:app --reload
 http://127.0.0.1:8000/
 ```
 
-### Expected input format
+
+### Endpoints
+
+  #### Expected request body format for the POST endpoints
 ```bash
 {
   "day": 1,
@@ -137,8 +140,7 @@ http://127.0.0.1:8000/
 }
 ```
 
-### Endpoints
-- **POST /predict_guests/random**: Predict the number of guests using a random guesser (baseline model that always predicts the average guest count in the training set).
+- **POST /predict_guests/random**: Predict the number of guests using a Random Guesser (baseline model that always predicts the average guest count in the training set).
 
 **Output example**
 ```bash
@@ -147,7 +149,7 @@ http://127.0.0.1:8000/
 }
 ```
 
-- **POST /predict_guests/model**: Predict the number of guests using a trained Linear Regression model.
+- **POST /predict_guests/model**: Predict the number of guests using a trained Linear Regression Model.
 
 **Output example**
 ```bash
@@ -156,7 +158,7 @@ http://127.0.0.1:8000/
 }
 ```
 
-- **GET /predict_guests/random/eval**: Returns the validation MSE for the random guesser.
+- **GET /predict_guests/random/eval**: Returns the validation MSE for the Random Guesser.
 
 **Output example**
 ```bash
@@ -165,7 +167,7 @@ http://127.0.0.1:8000/
 }
 ```
 
-- **GET /predict_guests/model/eval**: Returns the validation MSE for the linear regression model.
+- **GET /predict_guests/model/eval**: Returns the validation MSE for the Linear Regression Model.
 
 **Output example**
 ```bash

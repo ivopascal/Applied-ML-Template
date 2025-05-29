@@ -28,3 +28,4 @@ class EdgeDetector:
         else:
             height, width = image.size
             keypoints = [0, 0, 0, height, width, height, width, 0]
+            return self._known_keypoints_bb(keypoints)

@@ -31,7 +31,7 @@ In this step of the project, we curated the dataset to predict the daily guest a
 
 ## Splitting the data
 ### Steps we followed
-1. We took the **last 365 days** of the dataset for validation and testing.
+1. We took the **last 365 days** of the dataset for validation and testing, ensuring that the model is evaluated on the most recent, unseen data.
 2. The rest was used for **training** (about 80% of the total data).
 3. To make sure validation and test data are well-balanced, we assigned the **even-numbered days** to the **validation set** and the **odd-numbered days** to the **test set**. Since a week has an even number of days, the validation and test data will alternate in which days will contain.
 

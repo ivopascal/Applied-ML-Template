@@ -4,7 +4,7 @@ import torch.nn as nn
 from typing import Union, List
 
 
-def train_model(model:          nn.Module,
+def train_multitask_model(model:          nn.Module,
                 train_loader:   DataLoader,
                 val_loader:     DataLoader,
                 loss_functions: List[nn.Module],
@@ -36,8 +36,7 @@ def train_model(model:          nn.Module,
                 # of the i'th task
                 # y_batch[:, i].shape              = (batch_size,)
                 # y_batch[:, i].unsqueeze(1).shape = (batch_size, 1)
-                # 1 comes from the number of output neurons of the model. For 
-                # regression = 1. It should be generalized
+                # If output is shape [batch_size, 1], we must match it with y_batch[:, i].unsqueeze(1)
                 
                 task_losses = []
                 for i, (loss_fun, p) in enumerate(zip(loss_functions, preds)):
@@ -55,7 +54,7 @@ def train_model(model:          nn.Module,
 
             loss.backward()            # This is when the magic happens
             optimizer.step()
-            train_losses.append([tl.item() for tl in task_losses])
+            train_losses.append([tl.detach().item() for tl in task_losses])
 
         # Validation loop
         model.eval()
@@ -108,3 +107,5 @@ def train_model(model:          nn.Module,
         model.load_state_dict(best_model_state)
 
     return model
+
+

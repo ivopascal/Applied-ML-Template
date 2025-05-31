@@ -124,6 +124,7 @@ class MultiTaskMLP(MLPBase):
 
         Args:
             num_neurons (List[int]): List of neuron counts per hidden layer, including input.
+                                The length also determines the depth of the network.
                                     Example: [10, 64, 32]
             droput_rate (float): Dropout probability to apply after each hidden layer (default: 0.0).
             activation (str): Activation function to use in hidden layers. One of: "relu", "tanh", "sigmoid".

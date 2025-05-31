@@ -32,13 +32,16 @@ def train_val_test_data(rank_enc: str = "int", regression: bool = True) \
     base_dir = os.path.join(script_dir, "cleaned")
 
     if rank_enc == "int":
+        path = os.path.join(base_dir, "full_restaurant_data_sold_articles_int.csv")
+        data = pd.read_csv(path)
+    elif rank_enc == "int_rank":
         path = os.path.join(base_dir, "full_restaurant_data_rank_int.csv")
         data = pd.read_csv(path)
-    elif rank_enc == "onehot":
+    elif rank_enc == "onehot_rank":
         path = os.path.join(base_dir, "full_restaurant_data_rank_1hot.pkl")
         data = pd.read_pickle(path)
     else:
-        raise ValueError("`rank_enc` must be either 'int' or 'onehot'")
+        raise ValueError("`rank_enc` must be 'int', 'int_rank' or 'onehot_rank'")
 
     num_rows = data.shape[0]
 
@@ -70,17 +73,24 @@ def print_df_details(df: pd.DataFrame, name: str = "DataFrame") -> None:
 def main():
     # Load splits
     split_int = train_val_test_data("int")
-    split_onehot = train_val_test_data("onehot")
+    split_int_rank = train_val_test_data("int_rank")
+    split_onehot_rank = train_val_test_data("onehot_rank")
 
     # Print details for integer-encoded data
-    # print("== Integer-Encoded Data ==")
-    # for name, df in zip(["Train", "Validation", "Test"], split_int):
+    print("== Integer-Encoded Data ==")
+    for name, df in zip(["Train", "Validation", "Test"], split_int):
+        print_df_details(df, name)
+
+    # Print details for integer-encoded ranked data
+    # print("== Integer-Encoded Rank Data ==")
+    # for name, df in zip(["Train", "Validation", "Test"], split_int_rank):
     #     print_df_details(df, name)
 
+
     # Optionally, also inspect the one-hot encoded split
-    print("== One-Hot Encoded Data ==")
-    for name, df in zip(["Train", "Validation", "Test"], split_onehot):
-        print_df_details(df, name)
+    # print("== One-Hot Encoded Rank Data ==")
+    # for name, df in zip(["Train", "Validation", "Test"], split_onehot_rank):
+    #     print_df_details(df, name)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
-from typing import Union, List
+from typing import List, Tuple
 
 
 def train_multitask_model(model:          nn.Module,
@@ -11,7 +11,7 @@ def train_multitask_model(model:          nn.Module,
                 optimizer: torch.optim.Optimizer,
                 epochs: int = 50,
                 device: str = "cuda" if torch.cuda.is_available() else "cpu")\
-                    -> nn.Module:
+                    -> Tuple[nn.Module, List[torch.Tensor], List[torch.Tensor]]:
     
     """
     loss_functions is a list of loss functions to be used for each task
@@ -106,6 +106,6 @@ def train_multitask_model(model:          nn.Module,
     if best_model_state:
         model.load_state_dict(best_model_state)
 
-    return model
+    return model, train_losses, val_losses
 
 

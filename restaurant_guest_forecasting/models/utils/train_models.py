@@ -51,6 +51,9 @@ def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
         print(f"Validation MSE: {mean_squared_error(y_val, val_preds):.2f}")
 
 
+# def train_save_mlp(model: )
+
+
 def main():
     train_and_save_model(RandomRegressionGuesser(),
                          "random_regression_guesser.pkl")

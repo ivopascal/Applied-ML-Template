@@ -14,8 +14,9 @@ def train_val_test_data(rank_enc: str = "int", regression: bool = True) \
 
     Args:
         rank_enc (str): Type of rank encoding to use. Must be either:
-            - "int": Load CSV with integer-encoded ranks.
-            - "onehot": Load Pickle with one-hot encoded ranks.
+            - "int": Integer-encoded articles sold.
+            - "int_rank": Alternate CSV file with integer-encoded ranks.
+            - "onehot_rank": One-hot encoded ranks (loaded from Pickle).
 
     Returns:
         tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple containing:

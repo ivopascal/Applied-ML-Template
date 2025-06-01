@@ -36,7 +36,7 @@ class MLPBase(ABC, nn.Module):
         self.activation = activation
 
         self.model = MLPBase._model(num_neurons, droput_rate, activation)
-        self.output_layers = self._output_layers()   
+        self.output_layers = nn.ModuleList(self._output_layers()) 
         
 
     @staticmethod
@@ -133,8 +133,9 @@ class MultiTaskMLP(MLPBase):
                                           - [1]    -> single-task regression
                                           - [1, 1] -> two-task regression (two heads)
         """
-        super().__init__(num_neurons, droput_rate, activation)
         self.output_neurons = output_neurons
+        super().__init__(num_neurons, droput_rate, activation)
+        
 
 
     def _output_layers(self):

@@ -6,7 +6,7 @@ from sklearn.linear_model import LinearRegression
 from restaurant_guest_forecasting.api.input import ModelInput
 from restaurant_guest_forecasting.models.utils.load_models import \
     load_model
-from restaurant_guest_forecasting.models.utils.train_models import \
+from restaurant_guest_forecasting.models.utils.train_base_model import \
     train_and_save_model
 from restaurant_guest_forecasting.models.utils.evaluate_models import \
     validation_mse

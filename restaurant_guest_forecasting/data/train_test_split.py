@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from typing import Tuple
 
-def train_val_test_data(rank_enc: str = "int", regression: bool = True) \
+def train_val_test_data(rank_enc: str = "int") \
                           -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Splits restaurant data into training, validation, and test sets.
 
@@ -45,13 +45,7 @@ def train_val_test_data(rank_enc: str = "int", regression: bool = True) \
         raise ValueError("`rank_enc` must be 'int', 'int_rank' or 'onehot_rank'")
 
     num_rows = data.shape[0]
-
-    if regression:
-        data = data.drop(columns=[col for col in data.columns if col.startswith("art_")], errors='ignore')
-    else:
-        data = data.drop(columns=["GUESTS"], errors='ignore')
-        
-
+    
     train_df = data.head(num_rows - size_val_test).reset_index(drop=True)
     val_test_data = data.tail(size_val_test).reset_index(drop=True)
 
@@ -65,6 +59,7 @@ def print_df_details(df: pd.DataFrame, name: str = "DataFrame") -> None:
     """Prints basic information about a DataFrame."""
     print(f"\n{name}:")
     print(f"Shape: {df.shape}")
+    print(f"Columns: {df.columns}")
     print("Head:")
     print(df.head(3))
     print("Tail:")

@@ -4,15 +4,6 @@ import pickle
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-
-from restaurant_guest_forecasting.models.losses.asymmetric_loss \
-    import AsymmetricL2MSE
-
-from restaurant_guest_forecasting.models.mlp.mlp import MultiTaskMLP, MLPBase
-
 from restaurant_guest_forecasting.data.train_test_split import train_val_test_data
 from restaurant_guest_forecasting.data.split_date import split_date
 from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
@@ -20,6 +11,7 @@ from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
 
 from restaurant_guest_forecasting.models.random_guesser.random_regression_guesser\
       import RandomRegressionGuesser
+
 
 def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
                          model_filename: str,
@@ -63,16 +55,3 @@ def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
         print(f"Validation MSE: {mean_squared_error(y_val, val_preds):.2f}")
 
 
-# def train_save_mlp(model: MultiTaskMLP)
-
-
-def main():
-    train_and_save_model(RandomRegressionGuesser(),
-                         "random_regression_guesser.pkl")
-
-    train_and_save_model(LinearRegression(),
-                         "linear_regression.pkl")
-
-
-if __name__ == "__main__":
-    main()

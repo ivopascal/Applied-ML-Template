@@ -11,14 +11,19 @@ from restaurant_guest_forecasting.data.split_date import split_date
 
 def guest_df_to_tensor_dataset(df: pd.DataFrame) -> TensorDataset:
     """
-    Converts a DataFrame into a PyTorch TensorDataset for guest prediction.
+    Converts a DataFrame into a PyTorch TensorDataset for guest prediction. 
+    Also drops the article columns "art_<article>"
 
     Assumes:
     - All columns are numeric
     - 'GUESTS' is the target column
     """
+    art_columns=[col for col in df.columns if col.startswith("art_")]
+    df = df.drop(columns=art_columns)
+
     X = torch.tensor(df.drop(columns=["GUESTS"]).to_numpy(), dtype=torch.float32)
     y = torch.tensor(df["GUESTS"].to_numpy(), dtype=torch.float32).unsqueeze(1)
+
     return TensorDataset(X, y)
 
 def articles_df_to_tensor_dataset(df: pd.DataFrame) -> TensorDataset:

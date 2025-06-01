@@ -44,12 +44,12 @@ def train_multitask_model(model:          nn.Module,
                     if target.dim() < p.dim():
                         target = target.unsqueeze(-1)
 
-                    task_loss = loss_fun(p, target, model)
+                    task_loss = loss_fun(p, target)
                     task_losses.append(task_loss)
 
                 loss = sum(task_losses)
             else:
-                task_losses = [loss_functions[0](preds, y_batch, model)]
+                task_losses = [loss_functions[0](preds, y_batch)]
                 loss = task_losses[0]
 
             loss.backward()            # This is when the magic happens
@@ -71,12 +71,12 @@ def train_multitask_model(model:          nn.Module,
                         if target.dim() < p.dim():
                             target = target.unsqueeze(-1)
 
-                        task_loss = loss_fun(p, target, model)
+                        task_loss = loss_fun(p, target)
                         task_losses.append(task_loss)
 
                     loss = sum(task_losses) 
                 else:
-                    task_losses = [loss_functions[0](preds, y_batch, model)]
+                    task_losses = [loss_functions[0](preds, y_batch)]
                     loss = task_losses[0]
 
                 val_losses.append([tl.item() for tl in task_losses])  # Track each task separately

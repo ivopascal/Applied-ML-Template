@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 import torch
@@ -17,7 +19,7 @@ from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
 
 
 
-def train_save_mlp_guests():
+def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
      
     train_df, val_df, test_df = train_val_test_data()
 
@@ -75,8 +77,14 @@ def train_save_mlp_guests():
         epochs=epochs
     )
 
+    # Define the save path
+    save_dir = os.path.join(os.path.dirname(__file__), "saved_models")
+    os.makedirs(save_dir, exist_ok=True)
 
+    save_path = os.path.join(save_dir, model_file_name)
+    torch.save(trained_model.state_dict(), save_path)
 
+    print(f"Model saved to {save_path}")
 
 def main():
     train_save_mlp_guests()

@@ -30,7 +30,7 @@ def train_multitask_model(model:          nn.Module,
             optimizer.zero_grad()      # Empty the gradients for each batch
             preds = model(X_batch)
 
-            if isinstance(preds, tuple):
+            if isinstance(preds, list):
                 # loss_functions has a loss function for each task
                 # y_batch[:, i] is the target ("Everything from the i'th column")
                 # of the i'th task
@@ -64,7 +64,7 @@ def train_multitask_model(model:          nn.Module,
                 X_batch, y_batch = X_batch.to(device), y_batch.to(device)
                 preds = model(X_batch)
 
-                if isinstance(preds, tuple):
+                if isinstance(preds, list):
                     task_losses = []
                     for i, (loss_fun, p) in enumerate(zip(loss_functions, preds)):
                         target = y_batch[:, i]

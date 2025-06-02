@@ -16,6 +16,9 @@ from restaurant_guest_forecasting.data.train_test_split import train_val_test_da
 from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
                                                     guest_df_to_tensor_dataset
 
+from restaurant_guest_forecasting.models.utils.plotting import \
+                                    plot_avg_loss_over_epochs
+
 
 
 
@@ -65,10 +68,10 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     optimizer = optim.Adam(single_task_mlp.parameters(), lr=1e-3)
 
     # Epochs
-    epochs = 50
+    epochs = 10
 
     # Train the model
-    trained_model, train_losses, val_losses = train_multitask_model(
+    train_info = train_multitask_model(
         model=single_task_mlp,
         train_loader=train_loader,
         val_loader=val_loader,
@@ -76,6 +79,14 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
         optimizer=optimizer,
         epochs=epochs
     )
+
+    trained_model   = train_info["model"]
+    avg_train_loss  = train_info["avg_train_loss"]
+    avg_val_loss    = train_info["avg_val_loss"]
+
+    print(f"{avg_train_loss=}\n{avg_val_loss=}")
+
+    plot_avg_loss_over_epochs(avg_train_loss, avg_val_loss)
 
     # Define the save path
     save_dir = os.path.join(os.path.dirname(__file__), "saved_models")

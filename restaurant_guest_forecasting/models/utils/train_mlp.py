@@ -46,8 +46,8 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     input_size = X_sample.shape[1]
 
     # Two hidden layers all with `input_size` neurons
-    # neurons = [input_size, input_size, input_size]
-    neurons = [input_size] + [1024]*6 + [512, 256, 128]
+    neurons = [input_size, input_size, input_size]
+    # neurons = [input_size] + [1024]*6 + [512, 256, 128]
 
     # One Task single value regression
     output_neurons = [1]
@@ -75,7 +75,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     optimizer = optim.Adam(single_task_mlp.parameters(), lr=1e-3)
 
     # Epochs
-    epochs = 500
+    epochs = 50
 
     # Train the model
     train_info = train_multitask_model(

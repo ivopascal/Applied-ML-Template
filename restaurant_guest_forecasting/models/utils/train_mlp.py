@@ -27,12 +27,16 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     train_df, val_df, test_df = train_val_test_data()
 
     # Prepare DataLoaders for guests only
+    # Training DataLoader
     train_loader = prepare_dataloader(df=train_df,
                                       batch_size=64, 
-                                      to_tensor_fn=guest_df_to_tensor_dataset)
+                                      to_tensor_fn=guest_df_to_tensor_dataset,
+                                      is_train=True)
+    # Validation DataLoader
     val_loader   = prepare_dataloader(df=val_df,
                                       batch_size=64,
-                                      to_tensor_fn=guest_df_to_tensor_dataset)
+                                      to_tensor_fn=guest_df_to_tensor_dataset,
+                                      is_train=False)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -42,7 +46,9 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     input_size = X_sample.shape[1]
 
     # Two hidden layers all with `input_size` neurons
-    neurons = [input_size, input_size, input_size]
+    # neurons = [input_size, input_size, input_size]
+    neurons = [input_size] + [1024]*6 + [512, 256, 128]
+
     # One Task single value regression
     output_neurons = [1]
 
@@ -56,11 +62,12 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     
     # Define Loss Function
     # Penalize twice as harshly overestimation
-    w_over = 2.0
+    w_over = 1.0
     w_under = 1.0
     loss_fn = AsymmetricL2MSE(w_over=w_over,
                               w_under=w_under, 
-                              model=single_task_mlp).to(device=device)
+                              model=single_task_mlp,
+                              l2_lambda=0.0).to(device=device)
     # Single loss
     losses = [loss_fn]
 
@@ -68,7 +75,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     optimizer = optim.Adam(single_task_mlp.parameters(), lr=1e-3)
 
     # Epochs
-    epochs = 10
+    epochs = 500
 
     # Train the model
     train_info = train_multitask_model(
@@ -80,13 +87,13 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
         epochs=epochs
     )
 
-    trained_model   = train_info["model"]
-    avg_train_loss  = train_info["avg_train_loss"]
-    avg_val_loss    = train_info["avg_val_loss"]
+    trained_model = train_info["model"]
+    train_losses  = train_info["train_losses"]
+    val_losses    = train_info["val_losses"]
 
-    print(f"{avg_train_loss=}\n{avg_val_loss=}")
+    print(f"{train_losses=}\n{val_losses=}")
 
-    plot_avg_loss_over_epochs(avg_train_loss, avg_val_loss)
+    plot_avg_loss_over_epochs(train_losses, val_losses)
 
     # Define the save path
     save_dir = os.path.join(os.path.dirname(__file__), "saved_models")

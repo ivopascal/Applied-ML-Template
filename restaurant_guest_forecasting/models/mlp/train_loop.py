@@ -114,7 +114,7 @@ def train_multitask_model(model: nn.Module,
         task_names = [f"Task {i}" for i in range(len(loss_functions))]
         task_logs = " | ".join(
             f"{name} - Train: {tl:.4f} | Val: {vl:.4f}"
-            for name, tl, vl in zip(avg_train_losses.tolist(), avg_val_losses.tolist(), task_names)
+            for name, tl, vl in zip(task_names, avg_train_losses.tolist(), avg_val_losses.tolist())
         )
         print(task_logs)
 

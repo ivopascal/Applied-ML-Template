@@ -4,8 +4,8 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from typing import Callable
 from restaurant_guest_forecasting.data.normalization import normalize_data
-from restaurant_guest_forecasting.data.train_test_split import train_val_test_data
 from restaurant_guest_forecasting.data.split_date import split_date
+from restaurant_guest_forecasting.data.normalizer.normalizer import Normalizer
 
 
 
@@ -64,7 +64,8 @@ def guest_and_articles_df_to_tensor_dataset(df: pd.DataFrame) -> TensorDataset:
 def prepare_dataloader(df: pd.DataFrame,
                        batch_size: int = 64,
                        to_tensor_fn: Callable[[pd.DataFrame], TensorDataset] 
-                       = guest_df_to_tensor_dataset
+                       = guest_df_to_tensor_dataset,
+                       is_train: bool = True
                        ) -> DataLoader:
     """
     Prepares a PyTorch DataLoader for training or evaluation.
@@ -87,10 +88,17 @@ def prepare_dataloader(df: pd.DataFrame,
         DataLoader: A PyTorch DataLoader ready for training or validation.
     """
     df = split_date(df, drop_date=True)
-    df = normalize_data(df)
+
+    normalizer = Normalizer()
+    if is_train:
+        normalizer.fit(df, save=True)
+    else:
+        normalizer.load()
+    df = normalizer.transform(df)
+
     ds = to_tensor_fn(df)
 
-    # Wrap in DataLoaders
-    loader = DataLoader(ds, batch_size=batch_size, shuffle=False)
+    # Wrap in DataLoaders (shuffle if training)
+    loader = DataLoader(ds, batch_size=batch_size, shuffle=is_train)
 
     return loader

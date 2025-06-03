@@ -18,7 +18,6 @@ def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     # List of known continuous features to scale
     continuous_columns = [
-        'GUESTS',
         'tempmax',
         'tempmin',
         'temp',

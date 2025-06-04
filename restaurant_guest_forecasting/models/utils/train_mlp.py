@@ -85,7 +85,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
                               model=single_task_mlp,
                               l2_lambda=0.0).to(device=device)
 
-    loss_fn = nn.MSELoss(reduction="mean").to(device=device)
+    # loss_fn = nn.MSELoss(reduction="mean").to(device=device)
 
     # Single loss
     losses = [loss_fn]

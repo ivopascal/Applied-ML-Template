@@ -9,7 +9,7 @@ def normalize_features_and_targets(
     X_df: pd.DataFrame,
     y_df: pd.DataFrame,
     is_train: bool = True
-):
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Normalizes features and targets using the Normalizer class.
     Handles fitting and loading for train/test splits.
@@ -33,6 +33,27 @@ def normalize_features_and_targets(
 
     return X, y
 
+def preprocess_df(
+    df: pd.DataFrame,
+    target_column: str = "GUESTS",
+    art_prefix: str = "art_"
+) -> pd.DataFrame:
+    """
+    Preprocesses a DataFrame for guest prediction.
+    Splits the date, drops article columns, and normalizes features.
+    Returns the processed DataFrame.
+    """
+    
+    df = split_date(df, drop_date=True)
+
+    art_columns = [col for col in df.columns if col.startswith(art_prefix)]
+    df = df.drop(columns=art_columns)
+
+    X_df = df.drop(columns=[target_column])
+    y_df = df[[target_column]]
+
+    return X_df, y_df
+
 
 def normalize_df(
     df: pd.DataFrame,
@@ -45,13 +66,7 @@ def normalize_df(
     Splits the date, drops article columns, and normalizes features and target.
     """    
 
-    df = split_date(df, drop_date=True)
-
-    art_columns = [col for col in df.columns if col.startswith(art_prefix)]
-    df = df.drop(columns=art_columns)
-
-    X_df = df.drop(columns=[target_column])
-    y_df = df[[target_column]]
+    X_df, y_df = preprocess_df(df, target_column, art_prefix)
 
     X, y = normalize_features_and_targets(X_df, y_df, is_train)
 

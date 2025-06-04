@@ -100,9 +100,15 @@ class Normalizer:
         scaled_data[self.continuous_columns] = self.scaler.transform(data[self.continuous_columns])
         return scaled_data
     
+    def inverse_transform_value(self, value: float) -> float:
+        """
+        Inverse transforms a single value using the fitted scaler.
+        """
+        return self.scaler.inverse_transform([[value]])[0][0]
+    
     def inverse_transform(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Inverse transforms the DataFrame by reverting the scaling of the specified continuous columns.
+        Inverse transforms the DataFrame by scaling back the specified continuous columns.
 
         Args:
             data (pd.DataFrame): The input DataFrame containing all features.

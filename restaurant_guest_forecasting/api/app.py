@@ -9,7 +9,7 @@ from restaurant_guest_forecasting.models.utils.load_models import \
 from restaurant_guest_forecasting.models.utils.train_base_model import \
     train_and_save_model
 from restaurant_guest_forecasting.models.utils.evaluate_models import \
-    validation_mse
+    test_mse
 from restaurant_guest_forecasting.models.random_guesser.random_regression_guesser\
       import RandomRegressionGuesser
 
@@ -32,6 +32,8 @@ train_and_save_model(RandomRegressionGuesser(),
 train_and_save_model(LinearRegression(),
                       "linear_regression.pkl")
 
+
+
 @app.get("/")
 async def read_root():
     try:
@@ -46,21 +48,21 @@ async def read_root():
 @app.get("/predict_guests/random/eval")
 async def random_guest_eval():
     model = load_model("random_regression_guesser.pkl")
-    return {"random_guesser_val_mse": f"{validation_mse(model):.2f}"}
+    return {"random_guesser_test_mse": f"{test_mse(model):.2f}"}
 
 
 @app.get("/predict_guests/model/eval")
 async def linear_regression_guest_eval():
     model = load_model("linear_regression.pkl")
-    return {"model_val_mse":  f"{validation_mse(model):.2f}"}
+    return {"model_test_mse":  f"{test_mse(model):.2f}"}
 
 
 @app.get("/predict_guests/compare")
-async def linear_regression_guest_eval():
+async def linear_regression_guest_eval_compare():
     random_guesser = load_model("random_regression_guesser.pkl")
     model          = load_model("linear_regression.pkl")
-    return {"random_guess_val_mse": f"{validation_mse(random_guesser):.2f}",
-            "model_val_mse": f"{validation_mse(model):.2f}"}
+    return {"random_guess_test_mse": f"{test_mse(random_guesser):.2f}",
+            "model_test_mse": f"{test_mse(model):.2f}"}
 
 
 @app.post("/predict_guests/random")

@@ -9,13 +9,15 @@ from restaurant_guest_forecasting.data.split_date import split_date
 from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
                                                     guest_df_to_tensor_dataset
 
+from restaurant_guest_forecasting.data.normalization import preprocess_df
+
 from restaurant_guest_forecasting.models.random_guesser.random_regression_guesser\
       import RandomRegressionGuesser
 
 
 def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
                          model_filename: str,
-                         evaluate: bool = True) -> None:
+                         test: bool = True) -> None:
     """Train and save a given model with optional evaluation.
 
     Args:
@@ -26,17 +28,10 @@ def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
     model_path = os.path.join(os.path.dirname(__file__), "saved_models", model_filename)
 
     # Load and split data
-    train_data, val_data, _ = train_val_test_data()
-    train_data = split_date(train_data, drop_date=True)
-    val_data = split_date(val_data, drop_date=True)
-
-    X_train, y_train = train_data.drop(columns=['GUESTS']), train_data['GUESTS']
-    X_val, y_val = val_data.drop(columns=['GUESTS']), val_data['GUESTS']
-
-    # Order the columns, so the order always matches
-    X_train = X_train.reindex(sorted(X_train.columns), axis=1)
-    X_val = X_val.reindex(sorted(X_val.columns), axis=1)
-
+    train_data, _, test_data = train_val_test_data()
+    X_train, y_train = preprocess_df(train_data)
+    X_test, y_test = preprocess_df(test_data)
+    
     # Train model
     model.fit(X_train, y_train)
 
@@ -47,11 +42,11 @@ def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
 
     print(f"Model saved to {model_path}")
 
-    if evaluate:
+    if test:
         train_preds = model.predict(X_train)
-        val_preds = model.predict(X_val)
+        test_preds = model.predict(X_test)
 
         print(f"Train MSE: {mean_squared_error(y_train, train_preds):.2f}")
-        print(f"Validation MSE: {mean_squared_error(y_val, val_preds):.2f}")
+        print(f"Test MSE: {mean_squared_error(y_test, test_preds):.2f}")
 
 

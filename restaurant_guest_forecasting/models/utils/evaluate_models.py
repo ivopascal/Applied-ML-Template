@@ -6,16 +6,18 @@ from restaurant_guest_forecasting.models.random_guesser.\
     random_regression_guesser import RandomRegressionGuesser
 from restaurant_guest_forecasting.data.train_test_split import \
     train_val_test_data
-from restaurant_guest_forecasting.data.split_date import split_date
+from restaurant_guest_forecasting.data.normalization import normalize_df, preprocess_df
+from restaurant_guest_forecasting.data.normalizer.normalizer import Normalizer
 
-def validation_mse(model: RandomRegressionGuesser | LinearRegression):
-    _, val_data, _ = train_val_test_data()
-    val_data = split_date(val_data, drop_date=True)
 
-    # Order the columns, so the order always matches
-    val_data = val_data.reindex(sorted(val_data.columns), axis=1)
-
-    X, y = val_data.drop(columns=['GUESTS']), val_data['GUESTS']
-
+def test_mse(model: RandomRegressionGuesser | LinearRegression):
+    _, _, test_data = train_val_test_data()
+    X, y = preprocess_df(test_data)
     predictions = model.predict(X)
+        # normalizer = Normalizer(is_target=True)
+        # normalizer.load()
+        # predictions = normalizer.inverse_transform(y)
+
+    
+
     return mean_squared_error(y, predictions)

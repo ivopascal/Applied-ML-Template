@@ -4,37 +4,9 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from typing import Callable
 from restaurant_guest_forecasting.data.split_date import split_date
-from restaurant_guest_forecasting.data.normalizer.normalizer import Normalizer
+from restaurant_guest_forecasting.data.normalization import normalize_features_and_targets
 
 
-
-def normalize_features_and_targets(
-    X_df: pd.DataFrame,
-    y_df: pd.DataFrame,
-    is_train: bool = True
-):
-    """
-    Normalizes features and targets using the Normalizer class.
-    Handles fitting and loading for train/test splits.
-    Returns normalized X and y as DataFrames.
-    """
-    X_normalizer = Normalizer(is_target=False)
-    y_normalizer = Normalizer(is_target=True)
-
-    if is_train:
-        X_normalizer.fit(X_df, save=True)
-        X = X_normalizer.transform(X_df)
-
-        y_normalizer.fit(y_df, save=True)
-        y = y_normalizer.transform(y_df)
-    else:
-        X_normalizer.load()
-        y_normalizer.load()
-
-        X = X_normalizer.transform(X_df)
-        y = y_normalizer.transform(y_df)
-
-    return X, y
 
 def guest_df_to_tensor_dataset(df: pd.DataFrame, is_train: bool = True) -> TensorDataset:
     """

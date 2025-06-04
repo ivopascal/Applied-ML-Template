@@ -17,6 +17,8 @@ def plot_avg_loss_over_epochs(train_losses: Union[list, torch.Tensor],
 
     epochs = range(1, len(train_losses) + 1)
 
+    # plt.yscale('log')
+
     plt.figure(figsize=(8, 5))
     plt.plot(epochs, train_losses.tolist(), label="Train Loss", marker='o')
     plt.plot(epochs, val_losses.tolist(), label="Validation Loss", marker='s')

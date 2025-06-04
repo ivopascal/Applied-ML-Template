@@ -23,27 +23,41 @@ class Normalizer:
         'uvindex'
     ]
 
-    def __init__(self, continuous_columns: list = CONTINUOUS_COLUMNS):
+    TARGET_COLUMNS_SINGLE_TASK = ['GUESTS']
+
+    TRAIN_PATH = "restaurant_guest_forecasting/data/normalizer/scaler_train.pkl"
+    TARGET_PATH = "restaurant_guest_forecasting/data/normalizer/scaler_target.pkl"
+
+
+    def __init__(self, is_target: bool = False):
         """
         Initializes the Normalizer with a list of continuous columns to scale.
 
         Args:
             continuous_columns (list): List of column names to be normalized.
         """
-        self.continuous_columns = continuous_columns
+        self.is_target = is_target
+        self.continuous_columns = Normalizer.TARGET_COLUMNS_SINGLE_TASK if is_target\
+              else Normalizer.CONTINUOUS_COLUMNS
         self.scaler = MinMaxScaler()
 
-    def save(self, path: str = "restaurant_guest_forecasting/data/normalizer/scaler.pkl"):
+    def save(self):
         """
         Saves the internal scaler to a file.
         """
+        path = Normalizer.TARGET_PATH if self.is_target else Normalizer.TRAIN_PATH
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+
         with open(path, "wb") as f:
             pickle.dump(self.scaler, f)
 
-    def load(self, path: str = "restaurant_guest_forecasting/data/normalizer/scaler.pkl"):
+    def load(self):
         """
         Loads the scaler from a file. Raises FileNotFoundError if the file does not exist.
         """
+        path = Normalizer.TARGET_PATH if self.is_target else Normalizer.TRAIN_PATH
+
         if not os.path.exists(path):
             raise FileNotFoundError(f"Scaler file not found at '{path}'. Make sure to fit and save it first.")
         
@@ -74,6 +88,14 @@ class Normalizer:
         Returns:
             pd.DataFrame: A new DataFrame with scaled continuous features.
         """
+
+        missing = [col for col in self.continuous_columns if col not in data.columns]
+        if missing:
+            raise ValueError(f"Missing columns in input data for normalization: {missing}")
+
         scaled_data = data.copy()
+        if isinstance(scaled_data[self.continuous_columns], pd.Series):
+            # If only one continuous column, convert to DataFrame
+            scaled_data[self.continuous_columns] = scaled_data[self.continuous_columns].to_frame()  
         scaled_data[self.continuous_columns] = self.scaler.transform(data[self.continuous_columns])
         return scaled_data

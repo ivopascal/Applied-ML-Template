@@ -3,8 +3,10 @@ import torch
 import torch.nn as nn
 from typing import List, Dict
 
+from restaurant_guest_forecasting.models.mlp.mlp import MultiTaskMLP
 
-def train_multitask_model(model: nn.Module,
+
+def train_multitask_model(model: MultiTaskMLP,
                 train_loader:    DataLoader,
                 val_loader:      DataLoader,
                 loss_functions:  List[nn.Module],
@@ -32,6 +34,7 @@ def train_multitask_model(model: nn.Module,
 
         for X_batch, y_batch in train_loader:
             X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+
             optimizer.zero_grad()      # Empty the gradients for each batch
             preds = model(X_batch)
 
@@ -58,7 +61,7 @@ def train_multitask_model(model: nn.Module,
                 loss = task_losses[0]
 
             loss.backward()            # This is when the magic happens
-            optimizer.step()
+            # optimizer.step()           # Update the model parameters
 
             # batch_losses = [[t1_loss_batch1, t2_loss_batch1, ...],
             #                 [t1_loss_batch2, t2_loss_batch2, ...], ...]
@@ -95,7 +98,10 @@ def train_multitask_model(model: nn.Module,
                     task_losses = [loss_functions[0](preds, y_batch)]
                     loss = task_losses[0]
 
-                batch_losses.append([tl.item() for tl in task_losses])  # Track each task separately
+                # batch_losses.append([tl.detach().item() for tl in task_losses])  # Track each task separately
+                batch_losses.append([tl.item() for tl in task_losses])
+
+        optimizer.step()
 
         # avg_val_losses = [avg_t1_loss, avg_t2_loss, ...]
         avg_val_losses = torch.tensor(batch_losses, requires_grad=False).mean(dim=0)

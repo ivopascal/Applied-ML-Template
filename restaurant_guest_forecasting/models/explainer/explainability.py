@@ -20,7 +20,7 @@ class PredictionsExplainer():
     def __init__(self, 
                  model: MultiTaskMLP,
                  train_data_loader: DataLoader,
-                 test_data_loader: DataLoader):
+                 test_data_loader: DataLoader) -> None:
         
         self.model = model
         self.train_data = train_data_loader
@@ -30,15 +30,16 @@ class PredictionsExplainer():
 
 
 
-    def predict_wrapper(self, X: np.ndarray, device='cpu') -> np.ndarray:
+    def _predict_wrapper(self, X: np.ndarray, device='cpu') -> np.ndarray:
         self.model.to(device)
         self.model.eval()
-
+    
         predictions = []
 
         with torch.no_grad():
-            X_tensor = torch.tensor(X, dtype=torch.float32).to(device)
-            outputs = self.model(X_tensor)
+            X_tensor = torch.tensor(X.to_numpy(), dtype=torch.float32).to(device)
+            print(X_tensor[0], X_tensor[0].shape)
+            outputs = self.model(X_tensor[0])
             if isinstance(outputs, list):
                 outputs = outputs[0] 
             predictions = outputs.detach().cpu().numpy().flatten()
@@ -46,7 +47,8 @@ class PredictionsExplainer():
         return predictions
 
     def _calculate_shap_values(self):
-        kernel_explainer = shap.KernelExplainer(self.predict_wrapper, self.train_data)
+        sampled_data = self.train_data.sample(n=100, random_state=42)
+        kernel_explainer = shap.KernelExplainer(self._predict_wrapper, sampled_data)
         shap_values = kernel_explainer(self.test_data.iloc[51:52, :])
         
         return shap_values
@@ -54,7 +56,6 @@ class PredictionsExplainer():
     def shap_plot(self):
         shap_values = self._calculate_shap_values()
 
-        # Removed unused fig, ax variables to avoid linter error
         # Multiplying shap_values[0] by 1000 to scale the values for better visualization in the waterfall plot
         shap.plots.waterfall(shap_values[0] * 1000, show=False)
         explainer_params = f"background data size: {len(self.train_data)}, test instance index: 51"
@@ -74,10 +75,6 @@ if __name__ == "__main__":
     X_train, y_train = train_df.drop(columns=['GUESTS']), train_df['GUESTS']
     X_test, y_test = test_df.drop(columns=['GUESTS']), test_df['GUESTS']
 
-    # Order the columns, so the order always matches
-    X_train = X_train.reindex(sorted(X_train.columns), axis=1)
-    X_test = X_test.reindex(sorted(X_test.columns), axis=1)
-
     normalizer = Normalizer()
     X_train = pd.DataFrame(
         normalizer.fit_transform(X_train),
@@ -91,7 +88,7 @@ if __name__ == "__main__":
     )
 
     input_size = 37
-    neurons = [input_size, input_size, input_size]
+    neurons = [input_size] + [1024]*6 + [512, 256, 128]
 
     single_task_mlp = MultiTaskMLP(num_neurons=neurons, 
                                    droput_rate=0.0, 
@@ -99,5 +96,6 @@ if __name__ == "__main__":
                                    output_neurons=[1])
 
     predictor = PredictionsExplainer(single_task_mlp, X_train, X_test)
-    # predictions = predictor.predict_wrapper(X_test)
-    predictor.shap_plot()
+    predictions = predictor._predict_wrapper(X_test)
+    # print(predictions)
+    # predictor.shap_plot()

@@ -5,15 +5,16 @@ from sklearn.linear_model import LinearRegression
 
 from restaurant_guest_forecasting.api.input import ModelInput
 from restaurant_guest_forecasting.models.utils.load_models import \
-    load_model
+    load_model, load_mlp
+from restaurant_guest_forecasting.models.mlp.mlp import MultiTaskMLP
 from restaurant_guest_forecasting.models.utils.train_base_model import \
     train_and_save_model
 from restaurant_guest_forecasting.models.utils.evaluate_models import \
-    test_mse
+    test_mse, test_mlp_mse
 from restaurant_guest_forecasting.models.random_guesser.random_regression_guesser\
       import RandomRegressionGuesser
 
-
+NEURONS = [37] + [1024]*6 + [512, 256, 128]
 
 def _predict_guests(model: LinearRegression | RandomRegressionGuesser, 
                    input: ModelInput):
@@ -34,6 +35,8 @@ train_and_save_model(LinearRegression(),
 
 
 
+
+
 @app.get("/")
 async def read_root():
     try:
@@ -43,6 +46,7 @@ async def read_root():
     except Exception:
         return {"Welcome message": "Welcome to the Restaurant Guest \
                 Forecasting API!"}
+    
 
 
 @app.get("/predict_guests/random/eval")
@@ -61,8 +65,10 @@ async def linear_regression_guest_eval():
 async def linear_regression_guest_eval_compare():
     random_guesser = load_model("random_regression_guesser.pkl")
     model          = load_model("linear_regression.pkl")
+    mlp            = load_mlp(NEURONS)
     return {"random_guess_test_mse": f"{test_mse(random_guesser):.2f}",
-            "model_test_mse": f"{test_mse(model):.2f}"}
+            "model_test_mse": f"{test_mse(model):.2f}",
+            "mlp_test_mse": f"{test_mlp_mse(mlp):.2f}"}
 
 
 @app.post("/predict_guests/random")

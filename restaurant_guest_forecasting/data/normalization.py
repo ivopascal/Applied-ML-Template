@@ -1,48 +1,58 @@
-from sklearn.compose import ColumnTransformer
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
 
-def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
+from typing import Tuple
+from restaurant_guest_forecasting.data.split_date import split_date
+from restaurant_guest_forecasting.data.normalizer.normalizer import Normalizer
+
+
+def normalize_features_and_targets(
+    X_df: pd.DataFrame,
+    y_df: pd.DataFrame,
+    is_train: bool = True
+):
     """
-    Normalize continuous numeric features in the input DataFrame using Min-Max scaling.
-
-    This function applies MinMaxScaler to scale specified continuous features to the range [0, 1],
-    while leaving all other columns (e.g., categorical, one-hot encoded, or identifiers) unchanged.
-
-    Args:
-        data (pd.DataFrame): The input DataFrame containing all features.
-
-    Returns:
-        pd.DataFrame: A new DataFrame where the specified continuous features are scaled,
-                      and all other columns are preserved as-is.
+    Normalizes features and targets using the Normalizer class.
+    Handles fitting and loading for train/test splits.
+    Returns normalized X and y as DataFrames.
     """
-    # List of known continuous features to scale
-    continuous_columns = [
-        'tempmax',
-        'tempmin',
-        'temp',
-        'feelslikemax',
-        'feelslikemin',
-        'feelslike',
-        'humidity',
-        'precip',
-        'precipprob',
-        'windgust',
-        'windspeed',
-        'cloudcover',
-        'solarradiation',
-        'uvindex'
-    ]
+    X_normalizer = Normalizer(is_target=False)
+    y_normalizer = Normalizer(is_target=True)
 
-    # Create a copy to avoid modifying the original DataFrame
-    scaled_df = data.copy()
+    if is_train:
+        X_normalizer.fit(X_df, save=True)
+        X = X_normalizer.transform(X_df)
 
-    # Initialize MinMaxScaler and apply it only to the continuous columns
-    scaler = MinMaxScaler()
-    scaled_df[continuous_columns] = scaler.fit_transform(data[continuous_columns])
+        y_normalizer.fit(y_df, save=True)
+        y = y_normalizer.transform(y_df)
+    else:
+        X_normalizer.load()
+        y_normalizer.load()
 
-    return scaled_df
+        X = X_normalizer.transform(X_df)
+        y = y_normalizer.transform(y_df)
 
-if __name__ == '__main__':
-    restaurant_df = pd.read_csv('restaurant_guest_forecasting/data/cleaned/full_restaurant_data_rank_int.csv')
-    scaled_restaurant_df = normalize_data(restaurant_df)
+    return X, y
+
+
+def normalize_df(
+    df: pd.DataFrame,
+    is_train: bool = True,
+    target_column: str = "GUESTS",
+    art_prefix: str = "art_"
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Normalizes a DataFrame for guest prediction.
+    Splits the date, drops article columns, and normalizes features and target.
+    """    
+
+    df = split_date(df, drop_date=True)
+
+    art_columns = [col for col in df.columns if col.startswith(art_prefix)]
+    df = df.drop(columns=art_columns)
+
+    X_df = df.drop(columns=[target_column])
+    y_df = df[[target_column]]
+
+    X, y = normalize_features_and_targets(X_df, y_df, is_train)
+
+    return X, y

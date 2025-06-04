@@ -1,0 +1,112 @@
+import os
+
+import pandas as pd
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+from restaurant_guest_forecasting.models.losses.asymmetric_loss \
+    import AsymmetricL2MSE
+
+from restaurant_guest_forecasting.models.mlp.mlp import MultiTaskMLP
+from restaurant_guest_forecasting.models.mlp.train_loop import train_multitask_model
+
+from restaurant_guest_forecasting.data.train_test_split import train_val_test_data
+from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
+                                                    guest_df_to_tensor_dataset
+
+from restaurant_guest_forecasting.models.utils.plotting import \
+                                    plot_avg_loss_over_epochs
+
+
+
+
+def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
+     
+    train_df, val_df, test_df = train_val_test_data()
+
+    # Prepare DataLoaders for guests only
+    # Training DataLoader
+    train_loader = prepare_dataloader(df=train_df,
+                                      batch_size=64, 
+                                      to_tensor_fn=guest_df_to_tensor_dataset,
+                                      is_train=True)
+    # Validation DataLoader
+    val_loader   = prepare_dataloader(df=val_df,
+                                      batch_size=64,
+                                      to_tensor_fn=guest_df_to_tensor_dataset,
+                                      is_train=False)
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Get input size from a batch
+    sample_batch = next(iter(train_loader))
+    X_sample, _ = sample_batch
+    input_size = X_sample.shape[1]
+
+    # Two hidden layers all with `input_size` neurons
+    neurons = [input_size, input_size, input_size]
+    # neurons = [input_size] + [1024]*6 + [512, 256, 128]
+
+    # One Task single value regression
+    output_neurons = [1]
+
+    # Build model
+    single_task_mlp = MultiTaskMLP(num_neurons=neurons, 
+                                   droput_rate=0.0, 
+                                   activation="relu", 
+                                   output_neurons=output_neurons)
+    
+    single_task_mlp = single_task_mlp.to(device=device)
+    
+    # Define Loss Function
+    # Penalize twice as harshly overestimation
+    w_over = 1.0
+    w_under = 1.0
+    loss_fn = AsymmetricL2MSE(w_over=w_over,
+                              w_under=w_under, 
+                              model=single_task_mlp,
+                              l2_lambda=0.0).to(device=device)
+    # Single loss
+    losses = [loss_fn]
+
+    # Define optimizer
+    optimizer = optim.Adam(single_task_mlp.parameters(), lr=1e-3)
+
+    # Epochs
+    epochs = 50
+
+    # Train the model
+    train_info = train_multitask_model(
+        model=single_task_mlp,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        loss_functions=losses,
+        optimizer=optimizer,
+        epochs=epochs
+    )
+
+    trained_model = train_info["model"]
+    train_losses  = train_info["train_losses"]
+    val_losses    = train_info["val_losses"]
+
+    print(f"{train_losses=}\n{val_losses=}")
+
+    plot_avg_loss_over_epochs(train_losses, val_losses)
+
+    # Define the save path
+    save_dir = os.path.join(os.path.dirname(__file__), "saved_models")
+    os.makedirs(save_dir, exist_ok=True)
+
+    save_path = os.path.join(save_dir, model_file_name)
+    torch.save(trained_model.state_dict(), save_path)
+
+    print(f"Model saved to {save_path}")
+
+def main():
+    train_save_mlp_guests()
+
+
+if __name__ == "__main__":
+    main()

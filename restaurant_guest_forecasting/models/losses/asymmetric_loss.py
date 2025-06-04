@@ -15,8 +15,10 @@ class AsymmetricL2MSE(nn.Module):
         l2_lambda (float): L2 regularization strength.
     """
 
-    def __init__(self, w_over: float = 2.0, w_under: float = 1.0,
-                  l2_lambda: float = 0.0,) -> None:
+    def __init__(self, w_over: float = 2.0,
+                 w_under: float = 1.0,
+                 l2_lambda: float = 0.0, 
+                 model: nn.Module | None = None) -> None:
         """
         Initializes the AsymmetricL2MSE loss.
 
@@ -28,13 +30,13 @@ class AsymmetricL2MSE(nn.Module):
         super().__init__()
         self._w_over    = w_over       # Overestimation weights 
         self._w_under   = w_under      # Underestimation weights 
-        self._l2_lambda = l2_lambda    # Regularization term 
+        self._l2_lambda = l2_lambda    # Regularization term
+        self._model      = model        # Save model regularizing weights      
 
     def forward(
             self,
             preds: torch.Tensor, 
             targets: torch.Tensor,
-            model: torch.Module | None = None
             ) -> torch.Tensor:
         """
         Computes the asymmetric MSE loss, optionally including L2 regularization.
@@ -58,8 +60,8 @@ class AsymmetricL2MSE(nn.Module):
         # Compute MSE
         loss = (weights * sq_error).mean()
 
-        if model is not None and self._l2_lambda > 0.0:
-            l2_term = sum(p.pow(2).sum() for p in model.parameters())
+        if self._model is not None and self._l2_lambda > 0.0:
+            l2_term = sum(p.pow(2).sum() for p in self._model.parameters())
             loss += self._l2_lambda * l2_term
 
         return loss

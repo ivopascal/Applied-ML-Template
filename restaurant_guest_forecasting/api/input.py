@@ -3,6 +3,8 @@ from typing import Literal, Optional
 from datetime import datetime
 import pandas as pd
 
+import torch
+
 
 class ModelInput(BaseModel):
     """
@@ -96,6 +98,16 @@ class ModelInput(BaseModel):
         # Order the columns, so the order always matches
         df = df.reindex(sorted(df.columns), axis=1)
         return df
+    
+    def to_tensor(self) -> torch.Tensor:
+        """
+        Converts the model input to a PyTorch tensor.
+        
+        Returns:
+            torch.Tensor: A tensor representation of the model input.
+        """
+        df = self.to_df()
+        return torch.tensor(df.to_numpy(), dtype=torch.float32)
 
     
     def is_valid(self) -> bool:

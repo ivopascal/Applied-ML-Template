@@ -1,10 +1,12 @@
 import os
+import pickle
 
 import pandas as pd
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader
 
 from restaurant_guest_forecasting.models.losses.asymmetric_loss \
     import AsymmetricL2MSE
@@ -13,6 +15,7 @@ from restaurant_guest_forecasting.models.mlp.mlp import MultiTaskMLP
 from restaurant_guest_forecasting.models.mlp.train_loop import train_multitask_model
 
 from restaurant_guest_forecasting.data.train_test_split import train_val_test_data
+from sklearn.model_selection import KFold
 from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
                                                     guest_df_to_tensor_dataset
 
@@ -26,28 +29,42 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
      
     train_df, val_df, test_df = train_val_test_data()
 
+    # keep only a subset of the training data for forcing overfitting
+    # train_df = train_df.sample(n=1, random_state=42).reset_index(drop=True)
+
     # Prepare DataLoaders for guests only
     # Training DataLoader
     train_loader = prepare_dataloader(df=train_df,
                                       batch_size=64, 
                                       to_tensor_fn=guest_df_to_tensor_dataset,
                                       is_train=True)
-    # Validation DataLoader
-    val_loader   = prepare_dataloader(df=val_df,
-                                      batch_size=64,
-                                      to_tensor_fn=guest_df_to_tensor_dataset,
-                                      is_train=False)
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Get input size from a batch
     sample_batch = next(iter(train_loader))
     X_sample, _ = sample_batch
     input_size = X_sample.shape[1]
 
+    # # Forcing overfitting by using a fake dataset
+    # # This is just to test the training loop and the model
+    # X_fake = torch.randn(100, input_size)
+    # y_fake = torch.linspace(0, 1, 100).unsqueeze(1)    # unique targets
+    # ds_fake = torch.utils.data.TensorDataset(X_fake, y_fake)
+    # train_loader  = DataLoader(ds_fake, batch_size=10, shuffle=False)
+
+    # Validation DataLoader
+    val_loader   = prepare_dataloader(df=val_df,
+                                      batch_size=1,
+                                      to_tensor_fn=guest_df_to_tensor_dataset,
+                                      is_train=False)
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+
     # Two hidden layers all with `input_size` neurons
     # neurons = [input_size, input_size, input_size]
-    neurons = [input_size] + [1024]*6 + [512, 256, 128]
+    neurons = neurons = [ input_size ] + [ 2048 ]*10 + [ 1024, 512, 256 ]
+    # neurons = [input_size, 64, 64, 32]
 
     # One Task single value regression
     output_neurons = [1]
@@ -62,20 +79,27 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     
     # Define Loss Function
     # Penalize twice as harshly overestimation
-    w_over = 1.0
+    w_over = 2.0
     w_under = 1.0
     loss_fn = AsymmetricL2MSE(w_over=w_over,
                               w_under=w_under, 
                               model=single_task_mlp,
                               l2_lambda=0.0).to(device=device)
+
+    loss_fn = nn.MSELoss(reduction="mean").to(device=device)
+
     # Single loss
     losses = [loss_fn]
 
     # Define optimizer
-    optimizer = optim.Adam(single_task_mlp.parameters(), lr=1e-3)
+    optimizer = optim.Adam(single_task_mlp.parameters(), lr=1e-4)
+    # optimizer = optim.SGD(single_task_mlp.parameters(),
+    #                       lr=1e-4,
+    #                       momentum=0.9,
+    #                       weight_decay=1e-4)
 
     # Epochs
-    epochs = 500
+    epochs = 50
 
     # Train the model
     train_info = train_multitask_model(
@@ -104,9 +128,260 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
 
     print(f"Model saved to {save_path}")
 
+def tune_hyperparameters():
+    train_df, val_df, test_df = train_val_test_data()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Prepare validation DataLoader
+    val_loader = prepare_dataloader(df=val_df,
+                                  batch_size=1,
+                                  to_tensor_fn=guest_df_to_tensor_dataset,
+                                  is_train=False)
+
+    # Grid search parameters
+    param_grid = {
+        'learning_rate': [1e-2, 1e-3, 1e-4],
+        'batch_size': [16, 32, 64],
+        'dropout_rate': [0.0, 0.1, 0.2],
+        'num_layers': [3, 5, 7],
+        'neurons_per_layer': [256, 512, 1024]
+    }
+
+    best_val_loss = float('inf')
+    best_params = None
+    best_model = None
+
+    for lr in param_grid['learning_rate']:
+        for batch_size in param_grid['batch_size']:
+            for dropout in param_grid['dropout_rate']:
+                for num_layers in param_grid['num_layers']:
+                    for neurons in param_grid['neurons_per_layer']:
+                        print(f"\nTrying: lr={lr}, batch={batch_size}, dropout={dropout}, "
+                              f"layers={num_layers}, neurons={neurons}")
+
+                        # Prepare training DataLoader
+                        train_loader = prepare_dataloader(df=train_df,
+                                                        batch_size=batch_size,
+                                                        to_tensor_fn=guest_df_to_tensor_dataset,
+                                                        is_train=True)
+
+                        # Get input size
+                        X_sample, _ = next(iter(train_loader))
+                        input_size = X_sample.shape[1]
+
+                        # Define architecture
+                        neurons_list = [input_size] + [neurons] * num_layers 
+                        
+                        # Build model
+                        model = MultiTaskMLP(num_neurons=neurons_list,
+                                           droput_rate=dropout,
+                                           activation="relu",
+                                           output_neurons=[1]).to(device)
+
+                        # Define loss and optimizer
+                        loss_fn = nn.MSELoss(reduction="mean").to(device)
+                        optimizer = optim.Adam(model.parameters(), lr=lr)
+
+                        # Train model
+                        train_info = train_multitask_model(
+                            model=model,
+                            train_loader=train_loader,
+                            val_loader=val_loader,
+                            loss_functions=[loss_fn],
+                            optimizer=optimizer,
+                            epochs=100  # Reduced epochs for faster tuning
+                        )
+
+                        final_val_loss = train_info["val_losses"][-1][0]
+
+                        if final_val_loss < best_val_loss:
+                            best_val_loss = final_val_loss
+                            best_params = {
+                                'learning_rate': lr,
+                                'batch_size': batch_size,
+                                'dropout_rate': dropout,
+                                'num_layers': num_layers,
+                                'neurons_per_layer': neurons
+                            }
+                            best_model = model
+
+                        print(f"Validation loss: {final_val_loss:.4f}")
+
+    print("\nBest parameters:", best_params)
+    print("Best validation loss:", best_val_loss)
+    return best_model, best_params
+
+def k_fold_cross_validation_guests(k=5, epochs=100):
+    train_df, val_df, test_df = train_val_test_data()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Combine train and val for cross-validation
+    full_df = pd.concat([train_df, val_df]).reset_index(drop=True)
+    kf = KFold(n_splits=k, shuffle=True, random_state=42)
+
+    fold_results = []
+
+    for fold, (train_idx, val_idx) in enumerate(kf.split(full_df)):
+        print(f"\nFold {fold+1}/{k}")
+
+        fold_train_df = full_df.iloc[train_idx].reset_index(drop=True)
+        fold_val_df = full_df.iloc[val_idx].reset_index(drop=True)
+
+        train_loader = prepare_dataloader(df=fold_train_df,
+                                          batch_size=16,
+                                          to_tensor_fn=guest_df_to_tensor_dataset,
+                                          is_train=True)
+        val_loader = prepare_dataloader(df=fold_val_df,
+                                        batch_size=16,
+                                        to_tensor_fn=guest_df_to_tensor_dataset,
+                                        is_train=False)
+
+        X_sample, _ = next(iter(train_loader))
+        input_size = X_sample.shape[1]
+        neurons = [input_size, 64, 64, 32]
+        output_neurons = [1]
+
+        model = MultiTaskMLP(num_neurons=neurons,
+                             droput_rate=0.0,
+                             activation="relu",
+                             output_neurons=output_neurons).to(device)
+
+        # Use the same asymmetric loss as in train_save_mlp_guests
+        w_over = 2.0
+        w_under = 1.0
+        loss_fn = AsymmetricL2MSE(w_over=w_over,
+                                  w_under=w_under,
+                                  model=model,
+                                  l2_lambda=0.0).to(device)
+
+        optimizer = optim.Adam(model.parameters(), lr=1e-2)
+
+        train_info = train_multitask_model(
+            model=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            loss_functions=[loss_fn],
+            optimizer=optimizer,
+            epochs=epochs
+        )
+
+        final_val_loss = train_info["val_losses"][-1][0]
+        print(f"Fold {fold+1} validation loss: {final_val_loss:.4f}")
+        fold_results.append(final_val_loss)
+
+    avg_val_loss = sum(fold_results) / len(fold_results)
+    print(f"\nAverage validation loss across {k} folds: {avg_val_loss:.4f}")
+    return fold_results
+
+
+
+def k_fold_cross_validation_with_hyperparam_search(k=5, epochs=50):
+    from itertools import product
+
+    train_df, val_df, _ = train_val_test_data()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Combine training + validation for cross-validation
+    full_df = pd.concat([train_df, val_df]).reset_index(drop=True)
+    kf = KFold(n_splits=k, shuffle=False)
+
+    param_grid = {
+        'dropout_rate': [0.0, 0.1, 0.2],
+        'num_layers': [2, 3, 4, 5, 6],
+        'neurons_per_layer': [32, 64, 128, 256],
+        'l2_lambda': [0.0, 1e-3, 1e-2, 1e-1, 1.0]
+    }
+
+    all_configs = list(product(
+        param_grid['dropout_rate'],
+        param_grid['num_layers'],
+        param_grid['neurons_per_layer'],
+        param_grid['l2_lambda']
+    ))
+
+    results = []
+
+    for fold, (train_idx, val_idx) in enumerate(kf.split(full_df)):
+        print(f"\n=== Fold {fold + 1}/{k} ===")
+
+        fold_train_df = full_df.iloc[train_idx].reset_index(drop=True)
+        fold_val_df   = full_df.iloc[val_idx].reset_index(drop=True)
+
+        best_loss = float('inf')
+        best_config = None
+        best_model_state = None
+
+        for dropout, num_layers, neurons, l2_lambda in all_configs:
+            print(f"Trying config: dropout={dropout}, layers={num_layers}, neurons={neurons}, l2_lambda={l2_lambda}")
+
+            train_loader = prepare_dataloader(fold_train_df, batch_size=16,
+                                              to_tensor_fn=guest_df_to_tensor_dataset, is_train=True)
+            val_loader = prepare_dataloader(fold_val_df, batch_size=16,
+                                            to_tensor_fn=guest_df_to_tensor_dataset, is_train=False)
+
+            X_sample, _ = next(iter(train_loader))
+            input_size = X_sample.shape[1]
+            architecture = [input_size] + [neurons] * num_layers
+
+            model = MultiTaskMLP(num_neurons=architecture,
+                                 droput_rate=dropout,
+                                 activation="relu",
+                                 output_neurons=[1]).to(device)
+
+            loss_fn = AsymmetricL2MSE(w_over=2.0, w_under=1.0, model=model, l2_lambda=l2_lambda).to(device)
+            optimizer = optim.Adam(model.parameters(), lr=1e-2)  # fixed learning rate, no weight_decay
+
+            train_info = train_multitask_model(
+                model=model,
+                train_loader=train_loader,
+                val_loader=val_loader,
+                loss_functions=[loss_fn],
+                optimizer=optimizer,
+                epochs=epochs
+            )
+
+            val_loss = train_info["val_losses"][-1][0]
+            print(f"Validation loss: {val_loss:.4f}")
+
+            if val_loss < best_loss:
+                best_loss = val_loss
+                best_config = {
+                    'dropout_rate': dropout,
+                    'num_layers': num_layers,
+                    'neurons_per_layer': neurons,
+                    'l2_lambda': l2_lambda
+                }
+                best_model_state = model.state_dict()
+
+        print(f"\nBest config for fold {fold+1}: {best_config}")
+        results.append((best_loss, best_config))
+
+    return results
+
+
 def main():
     train_save_mlp_guests()
 
+    # k_fold_results = k_fold_cross_validation_with_hyperparam_search(k=5, epochs=100)
+
+    # print("\nK-Fold Cross-Validation Results:")
+    # for i, (loss, config) in enumerate(k_fold_results):
+    #     print(f"Fold {i+1}: Loss = {loss:.4f}, Config = {config}")
+
+    # save_dir = os.path.join(os.path.dirname(__file__), "saved_models", "k_fold_results", "k_fold_5_epochs_100.pkl")
+    # if not os.path.exists(save_dir):
+    #     print(f"Creating directory: {save_dir}")
+    #     os.makedirs(save_dir, exist_ok=True)
+
+
+    # Save the results to a file
+    # pickle.dump(k_fold_results, open(save_dir, "wb"))
+
+    
+
+    # best_model, best_params = tune_hyperparameters()
+    # Save the best model
+    # train_save_mlp_guests(model_file_name=f"best_guests_mlp_{best_params['neurons_per_layer']}_{best_params['num_layers']}.pt")
 
 if __name__ == "__main__":
     main()

@@ -53,8 +53,8 @@ def train_val_test_data(rank_enc: str = "int") \
     test_df = val_test_data.iloc[1::2].reset_index(drop=True)  # Odd indices
 
     val_df = val_df.reindex(sorted(val_df.columns), axis=1)
-    test_df = val_df.reindex(sorted(val_df.columns), axis=1)
-    train_df = val_df.reindex(sorted(val_df.columns), axis=1)
+    test_df = test_df.reindex(sorted(test_df.columns), axis=1)
+    train_df = train_df.reindex(sorted(train_df.columns), axis=1)
     
     return train_df, val_df, test_df
 

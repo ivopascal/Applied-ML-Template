@@ -63,8 +63,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
 
     # Two hidden layers all with `input_size` neurons
     # neurons = [input_size, input_size, input_size]
-    neurons = neurons = [ input_size ] + [ 2048 ]*10 + [ 1024, 512, 256 ]
-    # neurons = [input_size, 64, 64, 32]
+    neurons = [input_size] + [1024]*6 + [512, 256, 128]
 
     # One Task single value regression
     output_neurons = [1]
@@ -86,7 +85,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
                               model=single_task_mlp,
                               l2_lambda=0.0).to(device=device)
 
-    loss_fn = nn.MSELoss(reduction="mean").to(device=device)
+    # loss_fn = nn.MSELoss(reduction="mean").to(device=device)
 
     # Single loss
     losses = [loss_fn]

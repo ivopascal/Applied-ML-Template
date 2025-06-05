@@ -3,6 +3,8 @@ import pickle
 
 import pandas as pd
 
+from itertools import product
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -22,7 +24,14 @@ from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader,\
 from restaurant_guest_forecasting.models.utils.plotting import \
                                     plot_avg_loss_over_epochs
 
+PARAM_GRID = {
+        'dropout_rate': [0.0, 0.1, 0.2],
+        'num_layers': [2, 4, 6],
+        'neurons_per_layer': [37, 64, 128],
+        'l2_lambda': [0.0, 1e-2, 1e-1, 1.0]
+    }
 
+NORMLIZE = True  # Set to True if you want to normalize the data
 
 
 def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
@@ -37,7 +46,8 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     train_loader = prepare_dataloader(df=train_df,
                                       batch_size=64, 
                                       to_tensor_fn=guest_df_to_tensor_dataset,
-                                      is_train=True)
+                                      is_train=True,
+                                      normalize=NORMLIZE)
 
     # Get input size from a batch
     sample_batch = next(iter(train_loader))
@@ -55,15 +65,17 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     val_loader   = prepare_dataloader(df=val_df,
                                       batch_size=1,
                                       to_tensor_fn=guest_df_to_tensor_dataset,
-                                      is_train=False)
+                                      is_train=False,
+                                      normalize=NORMLIZE)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-
-    # Two hidden layers all with `input_size` neurons
     # neurons = [input_size, input_size, input_size]
-    neurons = [input_size] + [1024]*6 + [512, 256, 128]
+    neurons = [input_size] + [input_size]*6
+
+    print(f"Input size: {input_size}")
+    print(f"Neurons per layer: {neurons}")
 
     # One Task single value regression
     output_neurons = [1]
@@ -77,15 +89,15 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     single_task_mlp = single_task_mlp.to(device=device)
     
     # Define Loss Function
-    # Penalize twice as harshly overestimation
-    w_over = 2.0
-    w_under = 1.0
+    # Penalize 1.5 as harshly overestimation
+    w_over = 2
+    w_under = 1
     loss_fn = AsymmetricL2MSE(w_over=w_over,
                               w_under=w_under, 
                               model=single_task_mlp,
                               l2_lambda=0.0).to(device=device)
-
-    # loss_fn = nn.MSELoss(reduction="mean").to(device=device)
+    # Only plain MSE
+    # loss_fn = torch.nn.MSELoss().to(device=device)
 
     # Single loss
     losses = [loss_fn]
@@ -98,7 +110,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     #                       weight_decay=1e-4)
 
     # Epochs
-    epochs = 50
+    epochs = 1000
 
     # Train the model
     train_info = train_multitask_model(
@@ -128,86 +140,95 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     print(f"Model saved to {save_path}")
 
 def tune_hyperparameters():
+
     train_df, val_df, test_df = train_val_test_data()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Prepare validation DataLoader
     val_loader = prepare_dataloader(df=val_df,
-                                  batch_size=1,
-                                  to_tensor_fn=guest_df_to_tensor_dataset,
-                                  is_train=False)
+                                    batch_size=1,
+                                    to_tensor_fn=guest_df_to_tensor_dataset,
+                                    is_train=False)
 
-    # Grid search parameters
-    param_grid = {
-        'learning_rate': [1e-2, 1e-3, 1e-4],
-        'batch_size': [16, 32, 64],
-        'dropout_rate': [0.0, 0.1, 0.2],
-        'num_layers': [3, 5, 7],
-        'neurons_per_layer': [256, 512, 1024]
-    }
+    param_grid = PARAM_GRID
+
+
+    all_configs = list(product(
+        param_grid['dropout_rate'],
+        param_grid['num_layers'],
+        param_grid['neurons_per_layer'],
+        param_grid['l2_lambda']
+    ))
 
     best_val_loss = float('inf')
     best_params = None
     best_model = None
+    results_dict = {}
 
-    for lr in param_grid['learning_rate']:
-        for batch_size in param_grid['batch_size']:
-            for dropout in param_grid['dropout_rate']:
-                for num_layers in param_grid['num_layers']:
-                    for neurons in param_grid['neurons_per_layer']:
-                        print(f"\nTrying: lr={lr}, batch={batch_size}, dropout={dropout}, "
-                              f"layers={num_layers}, neurons={neurons}")
+    for dropout, num_layers, neurons, l2_lambda in all_configs:
+        print(f"\nTrying: dropout={dropout}, layers={num_layers}, neurons={neurons}, l2_lambda={l2_lambda}")
 
-                        # Prepare training DataLoader
-                        train_loader = prepare_dataloader(df=train_df,
-                                                        batch_size=batch_size,
-                                                        to_tensor_fn=guest_df_to_tensor_dataset,
-                                                        is_train=True)
+        # Prepare training DataLoader
+        train_loader = prepare_dataloader(df=train_df,
+                                          batch_size=64,
+                                          to_tensor_fn=guest_df_to_tensor_dataset,
+                                          is_train=True)
 
-                        # Get input size
-                        X_sample, _ = next(iter(train_loader))
-                        input_size = X_sample.shape[1]
+        # Get input size
+        X_sample, _ = next(iter(train_loader))
+        input_size = X_sample.shape[1]
 
-                        # Define architecture
-                        neurons_list = [input_size] + [neurons] * num_layers 
-                        
-                        # Build model
-                        model = MultiTaskMLP(num_neurons=neurons_list,
-                                           droput_rate=dropout,
-                                           activation="relu",
-                                           output_neurons=[1]).to(device)
+        # Define architecture
+        neurons_list = [input_size] + [neurons] * num_layers
 
-                        # Define loss and optimizer
-                        loss_fn = nn.MSELoss(reduction="mean").to(device)
-                        optimizer = optim.Adam(model.parameters(), lr=lr)
+        # Build model
+        model = MultiTaskMLP(num_neurons=neurons_list,
+                             droput_rate=dropout,
+                             activation="relu",
+                             output_neurons=[1]).to(device)
 
-                        # Train model
-                        train_info = train_multitask_model(
-                            model=model,
-                            train_loader=train_loader,
-                            val_loader=val_loader,
-                            loss_functions=[loss_fn],
-                            optimizer=optimizer,
-                            epochs=100  # Reduced epochs for faster tuning
-                        )
+        # Use AsymmetricL2MSE loss for consistency
+        loss_fn = AsymmetricL2MSE(w_over=2.0, w_under=1.0, model=model, l2_lambda=l2_lambda).to(device)
+        optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
-                        final_val_loss = train_info["val_losses"][-1][0]
+        # Train model
+        train_info = train_multitask_model(
+            model=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            loss_functions=[loss_fn],
+            optimizer=optimizer,
+            epochs=50  # Reduced epochs for faster tuning
+        )
 
-                        if final_val_loss < best_val_loss:
-                            best_val_loss = final_val_loss
-                            best_params = {
-                                'learning_rate': lr,
-                                'batch_size': batch_size,
-                                'dropout_rate': dropout,
-                                'num_layers': num_layers,
-                                'neurons_per_layer': neurons
-                            }
-                            best_model = model
+        final_val_loss = train_info["val_losses"][-1][0]
 
-                        print(f"Validation loss: {final_val_loss:.4f}")
+        config_tuple = (dropout, num_layers, neurons, l2_lambda)
+        results_dict[config_tuple] = final_val_loss
+
+        if final_val_loss < best_val_loss:
+            best_val_loss = final_val_loss
+            best_params = {
+                'dropout_rate': dropout,
+                'num_layers': num_layers,
+                'neurons_per_layer': neurons,
+                'l2_lambda': l2_lambda
+            }
+            best_model = model
+
+        print(f"Validation loss: {final_val_loss:.4f}")
 
     print("\nBest parameters:", best_params)
     print("Best validation loss:", best_val_loss)
+
+    # Serialize results
+    save_dir = os.path.join(os.path.dirname(__file__), "saved_models", "hyperparameters_search")
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, "hyperparam_search_results.pkl")
+    with open(save_path, "wb") as f:
+        pickle.dump(results_dict, f)
+    print(f"Hyperparameter search results saved to {save_path}")
+
     return best_model, best_params
 
 def k_fold_cross_validation_guests(k=5, epochs=100):
@@ -275,8 +296,7 @@ def k_fold_cross_validation_guests(k=5, epochs=100):
 
 
 def k_fold_cross_validation_with_hyperparam_search(k=5, epochs=50):
-    from itertools import product
-
+    
     train_df, val_df, _ = train_val_test_data()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -284,12 +304,7 @@ def k_fold_cross_validation_with_hyperparam_search(k=5, epochs=50):
     full_df = pd.concat([train_df, val_df]).reset_index(drop=True)
     kf = KFold(n_splits=k, shuffle=False)
 
-    param_grid = {
-        'dropout_rate': [0.0, 0.1, 0.2],
-        'num_layers': [2, 3, 4, 5, 6],
-        'neurons_per_layer': [32, 64, 128, 256],
-        'l2_lambda': [0.0, 1e-3, 1e-2, 1e-1, 1.0]
-    }
+    param_grid = PARAM_GRID
 
     all_configs = list(product(
         param_grid['dropout_rate'],
@@ -359,28 +374,9 @@ def k_fold_cross_validation_with_hyperparam_search(k=5, epochs=50):
 
 
 def main():
-    train_save_mlp_guests()
-
-    # k_fold_results = k_fold_cross_validation_with_hyperparam_search(k=5, epochs=100)
-
-    # print("\nK-Fold Cross-Validation Results:")
-    # for i, (loss, config) in enumerate(k_fold_results):
-    #     print(f"Fold {i+1}: Loss = {loss:.4f}, Config = {config}")
-
-    # save_dir = os.path.join(os.path.dirname(__file__), "saved_models", "k_fold_results", "k_fold_5_epochs_100.pkl")
-    # if not os.path.exists(save_dir):
-    #     print(f"Creating directory: {save_dir}")
-    #     os.makedirs(save_dir, exist_ok=True)
-
-
-    # Save the results to a file
-    # pickle.dump(k_fold_results, open(save_dir, "wb"))
-
+    # tune_hyperparameters()
+    train_save_mlp_guests(model_file_name="guests_mlp.pt")
     
-
-    # best_model, best_params = tune_hyperparameters()
-    # Save the best model
-    # train_save_mlp_guests(model_file_name=f"best_guests_mlp_{best_params['neurons_per_layer']}_{best_params['num_layers']}.pt")
 
 if __name__ == "__main__":
     main()

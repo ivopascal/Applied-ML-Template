@@ -20,7 +20,10 @@ class Normalizer:
         'windspeed',
         'cloudcover',
         'solarradiation',
-        'uvindex'
+        'uvindex'#,
+        # 'year',
+        # 'month',
+        # 'day_of_year',
     ]
 
     TARGET_COLUMNS_SINGLE_TASK = ['GUESTS']

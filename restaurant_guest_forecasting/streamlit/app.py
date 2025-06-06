@@ -5,18 +5,27 @@ from restaurant_guest_forecasting.api.app import (
     DROPOUT_RATE,
     ACTIVATION,
     _predict_guests_mlp,
+    _predict_guests,
 )
 from restaurant_guest_forecasting.api.input import ModelInput
-from restaurant_guest_forecasting.models.utils.load_models import load_mlp
+from restaurant_guest_forecasting.models.utils.load_models import load_mlp, load_model
+
+# MODE = "linear"
+MODE = 'mlp'
 
 
 def predict(input: ModelInput) -> int:
     """
     Call the predictor here and return the predicted value rounded to int.
     """
-    model = load_mlp(NEURONS, DROPOUT_RATE, ACTIVATION)
+    if MODE == "mlp":
+        model = load_mlp(NEURONS, DROPOUT_RATE, ACTIVATION)
+        prediction = _predict_guests_mlp(model, input)
 
-    prediction = _predict_guests_mlp(model, input)
+    else:
+        model = load_model("linear_regression.pkl")
+        prediction = _predict_guests(model, input)
+
     return round(prediction, 0)
 
 
@@ -444,8 +453,8 @@ st.markdown("---")  # Separator
 # Prediction button
 if st.button("Predict guests"):
     data = st.session_state.input_data.copy()
-    
-    if (data["holiday"] == "None"):
+
+    if data["holiday"] == "None":
         data["holiday"] = None
 
     model = ModelInput(**data)

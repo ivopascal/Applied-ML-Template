@@ -14,11 +14,13 @@ from restaurant_guest_forecasting.models.mlp.mlp import MultiTaskMLP
 from restaurant_guest_forecasting.models.losses.asymmetric_loss import AsymmetricL2MSE
 from restaurant_guest_forecasting.data.tensor_data import prepare_dataloader
 
+DTYPE = torch.float64
+
 
 def test_mse(model: RandomRegressionGuesser | LinearRegression):
     _, _, test_data = train_val_test_data()
     X, y = preprocess_df(test_data)
-    predictions = model.predict(X)
+    predictions = model.predict(X).astype(int)
 
     
 
@@ -87,8 +89,8 @@ def test_mlp_asymmetric_mse(model: MultiTaskMLP, normalized: bool = True):
             output = normalizer.inverse_transform_value(output.item()) if normalized else output.item()
             predictions.append(output)
 
-    y_true = torch.tensor(y_df.to_numpy(), dtype=torch.float32, requires_grad=False)
-    y_pred = torch.tensor(np.array(predictions), dtype=torch.float32, requires_grad=False)
+    y_true = torch.tensor(y_df.to_numpy(), dtype=DTYPE, requires_grad=False)
+    y_pred = torch.tensor(np.array(predictions), dtype=DTYPE, requires_grad=False)
     loss = criterion(y_pred, y_true)
     return loss.item()
 
@@ -105,10 +107,10 @@ def test_asymmetric_mse(model: RandomRegressionGuesser | LinearRegression):
     _, _, test_data = train_val_test_data()
     X, y = preprocess_df(test_data)
 
-    predictions = model.predict(X)
+    predictions = model.predict(X).astype(int)
 
-    y_true = torch.tensor(y.to_numpy(), dtype=torch.float32, requires_grad=False)
-    y_pred = torch.tensor(predictions, dtype=torch.float32, requires_grad=False)
+    y_true = torch.tensor(y.to_numpy(), dtype=DTYPE, requires_grad=False)
+    y_pred = torch.tensor(predictions, dtype=DTYPE, requires_grad=False)
 
     criterion = AsymmetricL2MSE(l2_lambda=0, w_over=2, w_under=1)
     loss = criterion(y_pred, y_true)

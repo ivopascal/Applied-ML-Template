@@ -30,8 +30,8 @@ def guest_df_to_tensor_dataset(df: pd.DataFrame, is_train: bool = True,
     else:
         X, y = X_df, y_df
 
-    X = torch.tensor(X.to_numpy(), dtype=torch.float32)
-    y = torch.tensor(y.to_numpy(), dtype=torch.float32).unsqueeze(1)
+    X = torch.tensor(X.to_numpy(), dtype=torch.float64)
+    y = torch.tensor(y.to_numpy(), dtype=torch.float64).unsqueeze(1)
 
     return TensorDataset(X, y)
 
@@ -56,8 +56,8 @@ def articles_df_to_tensor_dataset(df: pd.DataFrame, is_train: bool = True, norma
     else:
         X, y = X_df, y_df
 
-    X = torch.tensor(X.to_numpy(), dtype=torch.float32)
-    y = torch.tensor(y.to_numpy(), dtype=torch.float32)
+    X = torch.tensor(X.to_numpy(), dtype=torch.float64)
+    y = torch.tensor(y.to_numpy(), dtype=torch.float64)
     return TensorDataset(X, y)
 
 def guest_and_articles_df_to_tensor_dataset(df: pd.DataFrame, is_train: bool = True, normalize: bool = True) -> TensorDataset:
@@ -81,8 +81,8 @@ def guest_and_articles_df_to_tensor_dataset(df: pd.DataFrame, is_train: bool = T
     else:
         X, y = X_df, y_df
 
-    X = torch.tensor(X.to_numpy(), dtype=torch.float32)
-    y = torch.tensor(y.to_numpy(), dtype=torch.float32)
+    X = torch.tensor(X.to_numpy(), dtype=torch.float64)
+    y = torch.tensor(y.to_numpy(), dtype=torch.float64)
     return TensorDataset(X, y)
 
 

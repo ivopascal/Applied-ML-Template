@@ -18,7 +18,8 @@ class MLPBase(ABC, nn.Module):
     def __init__(self,
                  num_neurons: List[int],
                  droput_rate: float = 0.0,
-                 activation: Literal["relu", "tanh", "sigmoid"] = "relu") \
+                 activation: Literal["relu", "tanh", "sigmoid"] = "relu",
+                 dtype=torch.float64) \
                     -> None:
         """
         Initializes the core MLP structure (excluding the output layer).
@@ -35,14 +36,16 @@ class MLPBase(ABC, nn.Module):
         self.dropout_rate = droput_rate
         self.activation = activation
 
-        self.model = MLPBase._model(num_neurons, droput_rate, activation)
+        self.model = MLPBase._model(num_neurons, droput_rate, activation, dtype=dtype)
         self.output_layers = nn.ModuleList(self._output_layers()) 
+        self.dtype = dtype
         
 
     @staticmethod
     def _model(num_neurons: List[int], 
                droput_rate: float = 0.0,
-               activation: Literal["relu", "tanh", "sigmoid"] = "relu")\
+               activation: Literal["relu", "tanh", "sigmoid"] = "relu",
+               dtype=torch.float64)\
          -> nn.Sequential:
         """
         Constructs the sequential MLP model, i.e. input & hidden layers.
@@ -62,7 +65,7 @@ class MLPBase(ABC, nn.Module):
             out_neurons_i = num_neurons[i + 1]
 
             modules_dict[f"linear_{i}"] = \
-                          nn.Linear(in_neurons_i, out_neurons_i)
+                          nn.Linear(in_neurons_i, out_neurons_i, dtype=dtype)
             modules_dict[f"{activation}_{i}"] = \
                           ActivationFactory.activation(activation_name=activation)
             modules_dict[f"dropout_{i}"] = \
@@ -117,7 +120,8 @@ class MultiTaskMLP(MLPBase):
                  num_neurons: List[int],
                  droput_rate: float = 0.0,
                  activation: Literal["relu", "tanh", "sigmoid"] = "relu",
-                 output_neurons: List[int] = [1]) \
+                 output_neurons: List[int] = [1],
+                 dtype=torch.float64) \
                     -> None:
         """
         Initializes the MultiTaskMLP model.
@@ -134,7 +138,8 @@ class MultiTaskMLP(MLPBase):
                                           - [1, 1] -> two-task regression (two heads)
         """
         self.output_neurons = output_neurons
-        super().__init__(num_neurons, droput_rate, activation)
+        self.dtype = dtype
+        super().__init__(num_neurons, droput_rate, activation, dtype=dtype)
         
 
 
@@ -145,6 +150,6 @@ class MultiTaskMLP(MLPBase):
         Returns:
             Tuple[nn.Module]: Tuple of output layers, one per task.
         """
-        output_layers = [nn.Linear(self.num_neurons[-1], out_neurons) \
+        output_layers = [nn.Linear(self.num_neurons[-1], out_neurons, dtype=self.dtype) \
                          for out_neurons in self.output_neurons]
         return tuple(output_layers)

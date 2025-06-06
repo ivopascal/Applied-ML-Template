@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
+from restaurant_guest_forecasting.api.input import ModelInput
 
 def predict(data_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -279,6 +280,11 @@ st.markdown("---") # Separator
 
 # Prediction button
 if st.button("Predict guests"):
+    # Here we make it a ModelInput
+    # TODO: change the code in predictor to use this one
+    model = ModelInput(**st.session_state.input_data)
+
+    # TODO: remove the next code when using ModelInput
     input_df = pd.DataFrame([st.session_state.input_data])
 
     # Ensure correct data types (important for models)

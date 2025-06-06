@@ -149,6 +149,17 @@ class CNN:
         report = classification_report(y_test, y_pred, target_names=[f'Class {i}' for i in range(10)])
         print(report)
 
+        # accuracy on sudokus
+        num_sudokus = len(y_test)//81
+        correct_sudokus = 0
+        for i in range(num_sudokus):
+            start = i * 81
+            end = start + 81
+            if np.array_equal(y_pred[start:end], y_test[start:end]):
+                correct_sudokus += 1
+        correct_percent = correct_sudokus/num_sudokus
+        print(f"percentage of correct sudokus: {correct_percent}")
+
         # Accuracy plot over time
         plt.plot(self.history.history['accuracy'], label='Training Accuracy')
         plt.plot(self.history.history['val_accuracy'], label='Validation Accuracy')

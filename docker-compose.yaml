@@ -2,7 +2,7 @@ name: restaurant-guest-forecasting
 
 services:
   api_service:
-    container_name: fastapi
+    container_name: fastapi-rgf
     build:
       context: ./
       target: service

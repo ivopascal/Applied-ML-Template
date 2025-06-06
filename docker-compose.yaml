@@ -1,3 +1,5 @@
+name: restaurant-guest-forecasting
+
 services:
   api_service:
     container_name: fastapi

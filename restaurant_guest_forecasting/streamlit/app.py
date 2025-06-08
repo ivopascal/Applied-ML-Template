@@ -10,6 +10,12 @@ from restaurant_guest_forecasting.api.app import (
 from restaurant_guest_forecasting.api.input import ModelInput
 from restaurant_guest_forecasting.models.utils.load_models import load_mlp, load_model
 
+import asyncio
+import sys
+
+if sys.platform.startswith('win'):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 # MODE = "linear"
 MODE = 'mlp'
 

@@ -39,4 +39,6 @@ def split_date(X_orig: pd.DataFrame, drop_date: bool = False) -> pd.DataFrame:
     if drop_date and "Date" in X_processed.columns:
         X_processed = X_processed.drop("Date", axis=1)
 
+    X_processed = X_processed.reindex(sorted(X_processed.columns), axis=1)
+
     return X_processed

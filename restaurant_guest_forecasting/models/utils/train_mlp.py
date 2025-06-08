@@ -72,7 +72,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
 
 
     # neurons = [input_size, input_size, input_size]
-    neurons = [input_size] + [128]*6
+    neurons = [input_size] + [input_size]*6
 
     print(f"Input size: {input_size}")
     print(f"Neurons per layer: {neurons}")
@@ -110,7 +110,7 @@ def train_save_mlp_guests(model_file_name: str = "guests_mlp.pt"):
     #                       weight_decay=1e-4)
 
     # Epochs
-    epochs = 500
+    epochs = 7000
 
     # Train the model
     train_info = train_multitask_model(

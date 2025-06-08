@@ -31,6 +31,7 @@ def train_and_save_model(model: RandomRegressionGuesser | LinearRegression,
     train_data, _, test_data = train_val_test_data()
     X_train, y_train = preprocess_df(train_data)
     X_test, y_test = preprocess_df(test_data)
+
     
     # Train model
     model.fit(X_train, y_train)

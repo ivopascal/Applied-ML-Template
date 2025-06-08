@@ -20,9 +20,7 @@ DTYPE = torch.float64
 def test_mse(model: RandomRegressionGuesser | LinearRegression):
     _, _, test_data = train_val_test_data()
     X, y = preprocess_df(test_data)
-    predictions = model.predict(X).astype(int)
-
-    
+    predictions = [int(value) for value in model.predict(X)]
 
     return mean_squared_error(y, predictions)
 
@@ -107,7 +105,7 @@ def test_asymmetric_mse(model: RandomRegressionGuesser | LinearRegression):
     _, _, test_data = train_val_test_data()
     X, y = preprocess_df(test_data)
 
-    predictions = model.predict(X).astype(int)
+    predictions = [int(value) for value in model.predict(X)]
 
     y_true = torch.tensor(y.to_numpy(), dtype=DTYPE, requires_grad=False)
     y_pred = torch.tensor(predictions, dtype=DTYPE, requires_grad=False)

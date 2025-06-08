@@ -52,6 +52,7 @@ def preprocess_df(
     X_df = df.drop(columns=[target_column])
     y_df = df[[target_column]]
 
+
     return X_df, y_df
 
 

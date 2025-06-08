@@ -27,7 +27,7 @@ def _predict_guests(model: LinearRegression | RandomRegressionGuesser,
                    input: ModelInput):
     if input.is_valid():
         input_df = input.to_df()
-        return model.predict(input_df) 
+        return (model.predict(input_df)) 
     raise RuntimeError(input.invalid_reason)
 
 def _predict_guests_mlp(model: MultiTaskMLP, input: ModelInput):
@@ -107,7 +107,7 @@ async def predict_guests_rand(input: ModelInput):
     model = load_model("random_regression_guesser.pkl")
     try:
         prediction = _predict_guests(model, input)
-        return {"predicted_guests": f"{prediction[0]:.2f}"}
+        return {"predicted_guests": f"{prediction[0]}"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -117,7 +117,8 @@ async def predict_guests_model(input: ModelInput):
     model = load_model("linear_regression.pkl")
     try:
         prediction = _predict_guests(model, input)
-        return {"predicted_guests": f"{prediction[0]:.2f}"}
+        print(f"Prediction: {prediction}")
+        return {"predicted_guests": f"{int(prediction[0])}"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     

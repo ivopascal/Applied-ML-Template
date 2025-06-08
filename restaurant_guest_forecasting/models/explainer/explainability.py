@@ -14,6 +14,16 @@ from restaurant_guest_forecasting.data.normalization import \
 import os
 
 
+from restaurant_guest_forecasting.api.app import (
+    NEURONS,
+    DROPOUT_RATE,
+    ACTIVATION,
+)
+
+from restaurant_guest_forecasting.models.utils.load_models import load_mlp
+
+
+
 class PredictionsExplainer():
     def __init__(self,
                  model: MultiTaskMLP,
@@ -63,7 +73,7 @@ class PredictionsExplainer():
 
         with torch.no_grad():
             for row in range(X.shape[0]):
-                X_tensor = torch.tensor(X[row], dtype=torch.float32).\
+                X_tensor = torch.tensor(X[row], dtype=self.model.dtype).\
                     unsqueeze(0).to(device)
                 outputs = self.model(X_tensor)
                 if isinstance(outputs, list):
@@ -138,25 +148,8 @@ if __name__ == "__main__":
 
     # Initializing the model with the same architecture as the trained model
     input_size = X_train.shape[1]
-    neurons = [input_size] + [1024]*6 + [512, 256, 128]
 
-    single_task_mlp = MultiTaskMLP(num_neurons=neurons,
-                                   droput_rate=0.0,
-                                   activation="relu",
-                                   output_neurons=[1])
-
-    # Setting the path of the saved model
-    model_path = os.path.join(os.path.dirname(__file__),
-                              "..",
-                              "utils",
-                              "saved_models",
-                              "guests_mlp.pt")
-
-    # Load the state dictionary
-    state_dict = torch.load(model_path, map_location='cpu')
-
-    # Load into model
-    single_task_mlp.load_state_dict(state_dict)
+    single_task_mlp = load_mlp(NEURONS, DROPOUT_RATE, ACTIVATION)
 
     # Making a shap plot for a single prediction
     predictor = PredictionsExplainer(single_task_mlp, X_train, X_test)

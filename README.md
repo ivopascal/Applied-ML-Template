@@ -187,3 +187,13 @@ http://127.0.0.1:8000/
 ```
 
 - **/docs**: Leads to API documentation in Swagger.
+
+## Streamlit UI
+
+To start the streamlit UI:
+
+```bash
+PYTHONPATH="." streamlit run restaurant_guest_forecasting/streamlit/app.py
+```
+
+or use the `start_ui.sh` script.

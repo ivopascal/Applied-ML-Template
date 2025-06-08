@@ -1,0 +1,22 @@
+name: restaurant-guest-forecasting
+
+services:
+  api_service:
+    container_name: fastapi-rgf
+    build:
+      context: ./
+      target: service
+    # environment:
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    networks:
+      - ml_net
+    # volumes:
+    #   - type: bind
+    #     source: ./api/emotions.db
+    #     target: /root/app/site-packages/emotions.db
+    command: uvicorn restaurant_guest_forecasting.api.app:app --host 0.0.0.0 --port ${API_PORT} --root-path /
+
+networks:
+  ml_net:
+    driver: bridge

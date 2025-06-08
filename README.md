@@ -113,7 +113,7 @@ http://127.0.0.1:8000/
 
 ### Endpoints
 
-  #### Expected request body format for the POST endpoints
+#### Expected request body format for the POST endpoints
 ```bash
 {
   "day": 1,
@@ -187,6 +187,32 @@ http://127.0.0.1:8000/
 ```
 
 - **/docs**: Leads to API documentation in Swagger.
+
+### Docker
+
+### Components (services)
+
+- API server (FastAPI) that runs on 0.0.0.0 PORT 8081
+
+### Running with Docker
+
+To run the server on a Docker container, please execute the following from the root directory:
+
+ENV variables that are needed (should be set in the `.env` file in the root of the project):
+- API_PORT - the port where the API is exposed
+
+```bash
+docker-compose up --build
+```
+
+or, in case it needs elevated permissions:
+
+```bash
+sudo docker-compose up --build
+```
+
+The API can be accessed on http://localhost:8081
+The API Docs be accessed on http://localhost:8081/docs
 
 ## Streamlit UI
 

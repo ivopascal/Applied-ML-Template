@@ -213,3 +213,13 @@ sudo docker-compose up --build
 
 The API can be accessed on http://localhost:8081
 The API Docs be accessed on http://localhost:8081/docs
+
+## Streamlit UI
+
+To start the streamlit UI:
+
+```bash
+PYTHONPATH="." streamlit run restaurant_guest_forecasting/streamlit/app.py
+```
+
+or use the `start_ui.sh` script.

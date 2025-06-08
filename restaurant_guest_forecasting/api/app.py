@@ -43,7 +43,7 @@ def _predict_guests_mlp(model: MultiTaskMLP, input: ModelInput):
                 if NORMALIZED:
                     normalizer = Normalizer(is_target=True)
                     normalizer.load()
-                    output = normalizer.inverse_transform_value(output.item())
+                    output = int(normalizer.inverse_transform_value(output.item()))
             return output
         except Exception as e:
             raise RuntimeError(f"Error during prediction: {str(e)}")
@@ -127,6 +127,6 @@ async def predict_guests_mlp(input: ModelInput):
     model = load_mlp(NEURONS, DROPOUT_RATE, ACTIVATION)
     try:
         prediction = _predict_guests_mlp(model, input)
-        return {"predicted_guests": f"{prediction:.2f}"}
+        return {"predicted_guests": f"{prediction}"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

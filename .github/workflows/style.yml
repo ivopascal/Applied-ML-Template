@@ -1,0 +1,43 @@
+name: Style check
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  flake8_py3:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install flake8 and plugins
+        run: |
+          pip install flake8 flake8-docstrings flake8-annotations
+
+      - name: Configure Flake8
+        run: |
+          echo "[flake8]" > .flake8
+          echo "extend-ignore = E402" >> .flake8
+          echo "exclude = .github,autoop/tests" >> .flake8
+          # exclude A101, A102, D100 and everything that starts with D2 and D4
+          echo "ignore = ANN101,ANN102,D100,D2,D4,ANN002,ANN003" >> .flake8
+
+      - name: Run flake8
+        uses: suo/flake8-github-action@releases/v1
+        with:
+          checkName: "flake8_py3"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

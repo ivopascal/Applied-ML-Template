@@ -9,12 +9,11 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Data files
-data/cleaned/
-data/raw/
-*.csv
+# data/cleaned/
+*/data/raw/*
+# *.csv
 *.xlsx
 *.pkl
-*.pt
 
 # Virtual environments
 venv/
@@ -34,3 +33,21 @@ pip-delete-this-directory.txt
 .idea/
 
 .vscode/
+
+mlp_architecture
+mlp_architecture.svg
+mlp_architecture_tb
+mlp_architecture_tb.svg
+model.gv
+model.gv.png
+model_graph
+model_graph.png
+restaurant_guest_forecasting/models/mlp/graph.py
+
+guests_mlp_10k_epochs.pt
+guests_mlp_2155.pt
+guests_mlp_batch_norm_1000_epochs_norm.pt
+guests_mlp_best_best.pt
+guests_mlp_no_norm_500_epochs.pt
+guests_mlp_norm_no_batch_norm_1000_epochs.pt
+guests_mlp_best.pt

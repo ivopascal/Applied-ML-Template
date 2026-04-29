@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 pre-commit = "*"
+dvc = "*"
+dvc-gdrive = "*"
 
 [dev-packages]
 

@@ -1,0 +1,51 @@
+
+class JPEGBlockDCTPreprocessor(BasePreprocessor):
+    """
+    Compute block-wise JPEG-style DCT coefficients from a 256x256 RGB patch.
+
+    Pipeline:
+        RGB -> normalize -> grayscale -> level shift by 128
+        -> 8x8 block DCT (orthonormal)
+
+    Output shape:
+        (JPEG_BLOCKS_PER_DIM, JPEG_BLOCKS_PER_DIM, JPEG_BLOCK_SIZE**2)
+        i.e. (32, 32, 64)
+
+    Interpretation:
+        axis 0 -> block row index
+        axis 1 -> block column index
+        axis 2 -> flattened 8x8 DCT coefficients in row-major order
+    """
+
+    def __init__(self, epsilon: float = DEFAULT_EPSILON):
+        self.epsilon = epsilon
+        self._normalization = RGBNormalizationPreprocessor(epsilon=epsilon)
+        self._to_gray = RGBToGrayPreprocessor(normalize=False, epsilon=epsilon)
+
+    @staticmethod
+    def _dct2(block: np.ndarray) -> np.ndarray:
+        """Compute the orthonormal 2D DCT-II of an 8x8 block."""
+        return dct(dct(block.T, norm="ortho").T, norm="ortho")
+
+    def __call__(self, image_patch: np.ndarray) -> np.ndarray:
+        image = self._normalization(image_patch)
+        gray = self._to_gray(image)
+
+        # JPEG level shift: center [0, 255] around zero.
+        gray = gray - JPEG_RECENTER_VALUE
+
+        dct_tensor = np.zeros(
+            (JPEG_BLOCKS_PER_DIM, JPEG_BLOCKS_PER_DIM, JPEG_BLOCK_SIZE ** 2),
+            dtype=np.float64,
+        )
+
+        for by in range(JPEG_BLOCKS_PER_DIM):
+            for bx in range(JPEG_BLOCKS_PER_DIM):
+                y0 = by * JPEG_BLOCK_SIZE
+                x0 = bx * JPEG_BLOCK_SIZE
+                block = gray[y0: y0 + JPEG_BLOCK_SIZE, x0: x0 + JPEG_BLOCK_SIZE]
+                dct_tensor[by, bx, :] = self._dct2(block).ravel()
+
+        return dct_tensor
+
+

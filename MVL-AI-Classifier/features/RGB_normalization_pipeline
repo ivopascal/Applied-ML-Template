@@ -1,0 +1,37 @@
+
+class RGBNormalizationPreprocessor(BasePreprocessor):
+    """
+    Preprocess RGB image patches by:
+      - validating RGB shape (PATCH_SIZE x PATCH_SIZE x 3),
+      - converting dtype to float64,
+      - replacing NaN/Inf values with 0.0.
+
+    Output:
+        np.ndarray of shape (PATCH_SIZE, PATCH_SIZE, 3), dtype float64.
+        Value range mirrors input: [0, 255] for uint8 inputs.
+    """
+
+    def __init__(self, epsilon: float = DEFAULT_EPSILON):
+        self.epsilon = epsilon
+
+    def __call__(self, image_patch: np.ndarray) -> np.ndarray:
+        image = np.asarray(image_patch)
+
+        if image.ndim != 3 or image.shape != (PATCH_SIZE, PATCH_SIZE, 3):
+            raise ValueError(
+                f"Expected RGB image shape ({PATCH_SIZE}, {PATCH_SIZE}, 3), "
+                f"got {image.shape}."
+            )
+
+        # Convert to float64.
+        if np.issubdtype(image.dtype, np.integer):
+            image = image.astype(np.float64)
+        else:
+            image = image.astype(np.float64, copy=False)
+
+        # Replace non-finite values.
+        if not np.isfinite(image).all():
+            image = np.nan_to_num(image, nan=0.0, posinf=0.0, neginf=0.0)
+
+        return image
+

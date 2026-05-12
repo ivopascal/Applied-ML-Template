@@ -8,6 +8,7 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
     def __init__(
         self,
         n_bins,
+        normalization_preprocessor=None
         grayscale_preprocessor=None,
         epsilon=1e-8,
     ):
@@ -16,7 +17,7 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
         ----------
         n_bins : int
             Number of radial frequency bins.
-
+        normalization_preprocessor : RGBNormalizationPreprocessor
         grayscale_preprocessor :  RGBToGrayPreprocessor
 
         epsilon : float
@@ -32,13 +33,15 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
                 epsilon=epsilon,
                 normalize=False,   
             )
+        self.normalization_preprocessor = RGBNormalizationPreprocessor(epsilon=epsilon)
 
 
     def __call__(self, image_patch):
         """
         Compute radial power spectrum from an RGB image patch.
         """
-        gray = self.grayscale_preprocessor(image_patch)
+        image = self.normalization_preprocessor(image_patch)
+        gray = self.grayscale_preprocessor(image)
 
         # Remove DC component
         gray_centered = gray - gray.mean()

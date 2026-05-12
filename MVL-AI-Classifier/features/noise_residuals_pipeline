@@ -1,0 +1,59 @@
+class NoiseResidualPreprocessor(BasePreprocessor):
+    """
+    Compute a high-frequency noise residual representation from an RGB image.
+
+    The implemented filter is effectively a Gaussian high-pass filter:
+
+        residual = image - gaussian_blur(image)
+
+    Output shape:
+        (256, 256, 3)
+    """
+
+    def __init__(
+        self,
+        sigma=1.0,
+        standardize=False,
+        epsilon=1e-8,
+        normalization_preprocessor=None,
+    ):
+        """
+        Parameters
+        ----------
+        sigma : float
+            Standard deviation of the Gaussian low-pass filter.
+
+            Larger sigma:
+              - removes more low-frequency content,
+              - produces a stronger high-pass response.
+
+        standardize : bool
+            If True, divide the residual by its standard deviation.
+
+        epsilon : float
+            Numerical stability constant.
+
+        normalization_preprocessor : RGBNormalizationPreprocessor
+        """
+        self.sigma = sigma
+        self.standardize = standardize
+        self.epsilon = epsilon
+
+        # Dependency injection keeps the pipeline modular.
+        self.normalization_preprocessor = RGBNormalizationPreprocessor(epsilon=epsilon)
+
+    def __call__(self, image_patch):
+        """
+        Compute the residual representation.
+        """
+
+        image = self.normalization_preprocessor(image_patch)
+        lowpass = gaussian_filter(
+            image,
+            sigma=(self.sigma, self.sigma, 0.0),
+            mode="reflect",
+        )
+
+        residual = image - lowpass
+
+        return residual

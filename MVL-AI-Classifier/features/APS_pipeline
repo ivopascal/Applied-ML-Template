@@ -1,0 +1,117 @@
+class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
+    """
+    Compute a median-based azimuthal (radial) power spectrum from an RGB image.
+    Output:
+        np.ndarray of shape (n_bins,)
+    """
+
+    def __init__(
+        self,
+        n_bins,
+        grayscale_preprocessor=None,
+        epsilon=1e-8,
+    ):
+        """
+        Parameters
+        ----------
+        n_bins : int
+            Number of radial frequency bins.
+
+        grayscale_preprocessor :  RGBToGrayPreprocessor
+
+        epsilon : float
+            Numerical stability constant for log transform.
+        """
+
+        if not isinstance(n_bins, (int, np.integer)) or n_bins <= 0:
+            raise ValueError("n_bins must be a positive integer.")
+
+        self.n_bins = int(n_bins)
+        self.epsilon = epsilon
+        self.grayscale_preprocessor = RGBToGrayPreprocessor(
+                epsilon=epsilon,
+                normalize=False,   
+            )
+
+
+    def __call__(self, image_patch):
+        """
+        Compute radial power spectrum from an RGB image patch.
+        """
+        gray = self.grayscale_preprocessor(image_patch)
+
+        # Remove DC component
+        gray_centered = gray - gray.mean()
+        # apply a 2D Hanning window 
+        w = np.hanning(256)
+        window_2d = np.outer(w, w)
+        gray_windowed = gray_centered * window_2d
+
+        # Fourier transform to frequency domain
+        F = np.fft.fft2(gray_windowed)
+        F_shifted = np.fft.fftshift(F)
+
+        # power spectrum
+        power = np.abs(F_shifted) ** 2
+
+        # Frequency grid centered at (0,0) in the middle of the patch.
+        cx, cy = 128, 128
+
+        # Create coordinate grid
+        y, x = np.meshgrid(
+            np.arange(256),
+            np.arange(256),
+            indexing="ij",
+        )
+        # Radial distance from the center for each frequency bin.
+        r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+
+        # Maximum radius is the distance from the center to a corner.
+        r_max = r.max()
+
+        # Define radial bins from 0 to r_max.
+        bin_edges = np.linspace(
+            0.0,
+            r_max,
+            self.n_bins + 1,
+        )
+
+        # Assign each FFT coefficient to one radial bin.
+        bin_idx = np.digitize(
+            r.ravel(),
+            bin_edges,
+            right=False,
+        ) - 1
+        # Clip bin indices to valid range [0, n_bins-1].
+        bin_idx = np.clip(
+            bin_idx,
+            0,
+            self.n_bins - 1,
+        )
+
+        # Flatten power spectrum for vectorized indexing.
+        power_flat = power.ravel()
+
+        # Output APS feature vector.
+        spectrum = np.zeros(
+            self.n_bins,
+            dtype=np.float64,
+        )
+
+        # Compute median power in each radial bin.
+        for b in range(self.n_bins):
+
+            values = power_flat[bin_idx == b]
+
+            if values.size > 0:
+                spectrum[b] = np.median(values)
+            else:
+                # Rare edge case near outer frequency boundary.
+                spectrum[b] = 0.0
+
+        # log transform
+        spectrum = np.log(
+            spectrum + self.epsilon
+        )
+
+        return spectrum

@@ -1,0 +1,26 @@
+class RGBToGrayPreprocessor(BasePreprocessor):
+    """
+    Convert an RGB image patch of shape (256, 256, 3) to grayscale.
+    gray = 0.299 * R + 0.587 * G + 0.114 * B
+    optional normalization
+    """
+
+    def __init__(self, epsilon=1e-8, normalize=False):
+        self.epsilon = epsilon
+        self.normalize = normalize
+
+    def __call__(self, image_patch):
+        image = self.normalization_preprocessor(image_patch)
+        gray = (
+            0.299 * image[..., 0] +
+            0.587 * image[..., 1] +
+            0.114 * image[..., 2]
+        )
+
+        # Optional normalization to [0, 1]
+        if self.normalize:
+            gray_min = gray.min()
+            gray_max = gray.max()
+            gray = (gray - gray_min) / (gray_max - gray_min + self.epsilon)
+
+        return gray

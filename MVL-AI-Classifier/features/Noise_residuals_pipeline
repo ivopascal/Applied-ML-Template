@@ -1,0 +1,58 @@
+class NoiseResidualPreprocessor(BasePreprocessor):
+    """
+    Compute a high-frequency noise residual representation from an RGB patch.
+
+    Implements a Gaussian high-pass filter:
+
+        residual = image - gaussian_blur(image)
+
+    The output is normalized per-channel to zero mean and unit variance so
+    that downstream aggregation is on a consistent scale across all views.
+
+    Parameters
+    ----------
+    sigma : float
+        Standard deviation of the Gaussian low-pass filter.
+        Larger values retain less low-frequency content.
+    normalize_output : bool
+        If True, standardize the residual to zero mean / unit std per channel.
+    epsilon : float
+        Added to std during output normalization for numerical stability.
+
+    Output:
+        np.ndarray of shape (PATCH_SIZE, PATCH_SIZE, 3), dtype float64.
+    """
+
+    def __init__(
+        self,
+        sigma: float = 1.0,
+        normalize_output: bool = False,
+        epsilon: float = DEFAULT_EPSILON,
+    ):
+        self.sigma = sigma
+        self.normalize_output = normalize_output
+        self.epsilon = epsilon
+        self._normalization = RGBNormalizationPreprocessor(epsilon=epsilon)
+
+    def __call__(self, image_patch: np.ndarray) -> np.ndarray:
+        image = self._normalization(image_patch)
+
+        # Apply Gaussian blur independently per spatial dimension,
+        # sigma=0 on the channel axis to avoid cross-channel blurring.
+        lowpass = gaussian_filter(
+            image,
+            sigma=(self.sigma, self.sigma, 0.0),
+            mode="reflect",
+        )
+
+        residual = image - lowpass
+
+        if self.normalize_output:
+            # Per-channel standardization over the spatial dimensions.
+            mean = residual.mean(axis=(0, 1), keepdims=True)
+            std = residual.std(axis=(0, 1), keepdims=True)
+            residual = (residual - mean) / (std + self.epsilon)
+
+        return residual
+
+

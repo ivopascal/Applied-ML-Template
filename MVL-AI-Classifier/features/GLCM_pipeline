@@ -4,24 +4,15 @@ class GLCMPreprocessor(BasePreprocessor):
     256x256 RGB image patch.
 
     Four spatial offsets are computed:
-        horizontal   (dx=+1, dy= 0)
-        vertical     (dx= 0, dy=+1)
-        diagonal     (dx=+1, dy=+1)
-        anti-diagonal(dx=-1, dy=+1)
+        horizontal    (dx=+1, dy= 0)
+        vertical      (dx= 0, dy=+1)
+        diagonal      (dx=+1, dy=+1)
+        anti-diagonal (dx=-1, dy=+1)
 
-    Parameters
-    ----------
-    n_levels : int
-        Number of discrete gray levels for quantization.
-    symmetric : bool
-        If True, each GLCM is symmetrized (G = G + G.T), so that
-        co-occurrence of (i, j) and (j, i) are treated as equivalent.
-    epsilon : float
-        Numerical stability constant.
-
-    Output:
-        np.ndarray of shape (4, n_levels, n_levels), dtype float64.
-        Values are normalized co-occurrence probabilities.
+    Output
+    ------
+    np.ndarray of shape (4, n_levels, n_levels), dtype float32.
+        Normalized co-occurrence probabilities.
         axis 0 order: [horizontal, vertical, diagonal, anti_diagonal]
     """
 
@@ -36,18 +27,25 @@ class GLCMPreprocessor(BasePreprocessor):
         self,
         n_levels: int = 16,
         symmetric: bool = True,
-        epsilon: float = DEFAULT_EPSILON,
     ):
+        """
+        Parameters
+        ----------
+        n_levels : int
+            Number of quantization levels. Default 16.
+        symmetric : bool
+            If True, GLCM is symmetrized: G = G + G.T.
+        """
         if not isinstance(n_levels, (int, np.integer)) or n_levels <= 0:
             raise ValueError("n_levels must be a positive integer.")
 
         self.n_levels = int(n_levels)
         self.symmetric = symmetric
-        self.epsilon = epsilon
+        # Precompute as float32 to avoid repeated division in __call__.
+        self._scale = np.float32(self.n_levels / 255.0)
 
-        self._normalization = RGBNormalizationPreprocessor(epsilon=epsilon)
-        # normalize=True maps grayscale to [0, 1] for clean quantization.
-        self._to_gray = RGBToGrayPreprocessor(normalize=True, epsilon=epsilon)
+        self._normalization = RGBNormalizationPreprocessor()
+        self._to_gray = RGBToGrayPreprocessor()
 
     def _compute_glcm(
         self,
@@ -56,34 +54,29 @@ class GLCMPreprocessor(BasePreprocessor):
         dy: int,
     ) -> np.ndarray:
         """
-        Compute one normalized GLCM for a single spatial offset (dx, dy).
-
-        reference pixel : (y, x)
-        neighbor pixel  : (y + dy, x + dx)
-        Only in-bounds pixel pairs are included.
+        Compute one normalized GLCM for spatial offset (dx, dy).
 
         Returns
         -------
-        np.ndarray of shape (n_levels, n_levels), dtype float64.
+        np.ndarray of shape (n_levels, n_levels), dtype float32.
         """
         h, w = qimg.shape
 
-        y_ref = slice(max(0, -dy),  h - max(0, dy))
-        y_nb  = slice(max(0,  dy),  h - max(0, -dy))
-        x_ref = slice(max(0, -dx),  w - max(0, dx))
-        x_nb  = slice(max(0,  dx),  w - max(0, -dx))
+        y_ref = slice(max(0, -dy), h - max(0, dy))
+        y_nb  = slice(max(0,  dy), h - max(0, -dy))
+        x_ref = slice(max(0, -dx), w - max(0, dx))
+        x_nb  = slice(max(0,  dx), w - max(0, -dx))
 
         ref = qimg[y_ref, x_ref].ravel()
-        nb  = qimg[y_nb,  x_nb ].ravel()
+        nb  = qimg[y_nb,  x_nb].ravel()
 
-        G = np.zeros((self.n_levels, self.n_levels), dtype=np.float64)
-        np.add.at(G, (ref, nb), 1.0)
+        G = np.zeros((self.n_levels, self.n_levels), dtype=np.float32)
+        np.add.at(G, (ref, nb), np.float32(1.0))
 
         if self.symmetric:
             G = G + G.T
 
         total = G.sum()
-        # Only normalize when there are counts; otherwise return zero matrix.
         if total > 0:
             G /= total
 
@@ -92,14 +85,12 @@ class GLCMPreprocessor(BasePreprocessor):
     def __call__(self, image_patch: np.ndarray) -> np.ndarray:
         image = self._normalization(image_patch)
         gray = self._to_gray(image)
-
-        # Quantize [0, 1] grayscale into n_levels discrete bins.
-        gray_q = np.floor(gray * self.n_levels).astype(np.int32)
+        gray_q = np.floor(gray * self._scale).astype(np.int32)
         gray_q = np.clip(gray_q, 0, self.n_levels - 1)
 
         glcms = np.stack(
             [self._compute_glcm(gray_q, dx, dy) for dx, dy in self._OFFSETS],
             axis=0,
-        )  # shape: (4, n_levels, n_levels)
+        )  # (4, n_levels, n_levels), float32
 
         return glcms

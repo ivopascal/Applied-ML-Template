@@ -15,13 +15,8 @@ class RGBNormalizationPreprocessor(BasePreprocessor):
                 f"Expected shape ({PATCH_SIZE}, {PATCH_SIZE}, 3), "
                 f"got {image.shape}."
             )
-        if not np.isfinite(image.sum()):
-            bad_mask = ~np.isfinite(image)
-            n_bad = int(bad_mask.sum())
-            logger.warning(
-                "RGBNormalizationPreprocessor: %d / %d values (%.2f%%) "
-                "are non-finite. Replacing with 0.0. "
-            )
+        if not np.isfinite(image.sum()): #NaN or inf will lead to undefined sum
+            bad_mask = ~np.isfinite(image) #bitwise NOT operator
             image = np.where(bad_mask, np.float32(0.0), image)
 
         return image

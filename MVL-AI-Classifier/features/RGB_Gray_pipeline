@@ -1,49 +1,30 @@
 class RGBToGrayPreprocessor(BasePreprocessor):
     """
-    Convert a float64 RGB image of shape (PATCH_SIZE, PATCH_SIZE, 3)
-    to grayscale using the ITU-R BT.601 luminance formula:
+    Convert a float32 RGB image to single-channel grayscale.
+
+    Uses the ITU-R BT.601 luminance formula:
 
         gray = 0.299 * R + 0.587 * G + 0.114 * B
 
-    Parameters
-    ----------
-    normalize : bool
-        If True, linearly rescales the output to [0, 1].
-        Required by preprocessors that need a unit-range grayscale image
-        If False, output range mirrors the input 
-    epsilon : float
-        Added to the denominator during normalization for numerical stability.
-
-    Output:
-        np.ndarray of shape (PATCH_SIZE, PATCH_SIZE), dtype float64.
+    Output
+    ------
+    np.ndarray of shape (H, W), dtype float32.
     """
 
-    def __init__(
-        self,
-        normalize: bool = False,
-        epsilon: float = DEFAULT_EPSILON,
-    ):
-        self.normalize = normalize
-        self.epsilon = epsilon
+    _COEFFICIENTS = np.array([0.299, 0.587, 0.114], dtype=np.float32)
+
+    def __init__(self):
+        pass
 
     def __call__(self, image: np.ndarray) -> np.ndarray:
         if image.ndim != 3 or image.shape[2] != 3:
             raise ValueError(
-                f"RGBToGrayPreprocessor expects shape (H, W, 3), got {image.shape}."
+                f"Expected shape (H, W, 3), got {image.shape}."
             )
 
-        gray = (
-            0.299 * image[..., 0]
-            + 0.587 * image[..., 1]
-            + 0.114 * image[..., 2]
-        )
+        # Matrix-vector dot product along the channel axis.
+        # image shape: (H, W, 3) @ (3,) -> (H, W)
 
-        if self.normalize:
-            gray_min = gray.min()
-            gray_max = gray.max()
-            gray = (gray - gray_min) / (gray_max - gray_min + self.epsilon)
+        gray = image.astype(np.float32, copy=False) @ self._COEFFICIENTS
 
         return gray
-
-
-

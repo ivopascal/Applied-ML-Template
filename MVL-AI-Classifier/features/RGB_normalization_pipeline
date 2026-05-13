@@ -1,37 +1,27 @@
-
 class RGBNormalizationPreprocessor(BasePreprocessor):
     """
-    Preprocess RGB image patches by:
-      - validating RGB shape (PATCH_SIZE x PATCH_SIZE x 3),
-      - converting dtype to float64,
-      - replacing NaN/Inf values with 0.0.
+    Validate and normalize an RGB image patch to float32
 
-    Output:
-        np.ndarray of shape (PATCH_SIZE, PATCH_SIZE, 3), dtype float64.
-        Value range mirrors input: [0, 255] for uint8 inputs.
+    Output
+    ------
+    np.ndarray of shape (PATCH_SIZE, PATCH_SIZE, 3), dtype float32.
     """
 
-    def __init__(self, epsilon: float = DEFAULT_EPSILON):
-        self.epsilon = epsilon
-
     def __call__(self, image_patch: np.ndarray) -> np.ndarray:
-        image = np.asarray(image_patch)
+        image = np.asarray(image_patch, dtype=np.float32)
 
-        if image.ndim != 3 or image.shape != (PATCH_SIZE, PATCH_SIZE, 3):
+        if image.shape != (PATCH_SIZE, PATCH_SIZE, 3):
             raise ValueError(
-                f"Expected RGB image shape ({PATCH_SIZE}, {PATCH_SIZE}, 3), "
+                f"Expected shape ({PATCH_SIZE}, {PATCH_SIZE}, 3), "
                 f"got {image.shape}."
             )
-
-        # Convert to float64.
-        if np.issubdtype(image.dtype, np.integer):
-            image = image.astype(np.float64)
-        else:
-            image = image.astype(np.float64, copy=False)
-
-        # Replace non-finite values.
-        if not np.isfinite(image).all():
-            image = np.nan_to_num(image, nan=0.0, posinf=0.0, neginf=0.0)
+        if not np.isfinite(image.sum()):
+            bad_mask = ~np.isfinite(image)
+            n_bad = int(bad_mask.sum())
+            logger.warning(
+                "RGBNormalizationPreprocessor: %d / %d values (%.2f%%) "
+                "are non-finite. Replacing with 0.0. "
+            )
+            image = np.where(bad_mask, np.float32(0.0), image)
 
         return image
-

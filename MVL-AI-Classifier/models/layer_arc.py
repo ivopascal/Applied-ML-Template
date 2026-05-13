@@ -10,15 +10,11 @@ class LayerTemplate(nn.Module, ABC):
     This is a template for the layers that will be used in the multi-view architecture.
     It defines the basic structure and the forward method.
     """
-    def __init__(self, embed_dim : int = 512) -> None:
+    def __init__(self,) -> None:
         """
         Initialize the layer template.
-        Args:
-            embed_dim (int, optional): The dimension of the output embedding. Defaults to 512.
         """
         super().__init__()
-        self.embed_dim = embed_dim
-        
 
 
     @abstractmethod
@@ -42,15 +38,17 @@ class MLPLayer(LayerTemplate):
     """
     A simple MLP layer that can be used for tabular data or any other data that can be flattened.
     """
-    def __init__(self, input_size : int, hidden_dim : list = [256]) -> None:
+    def __init__(self, input_size : int, hidden_dim : list = [256], embed_dim : int = 512) -> None:
         """
         Initialize the MLP layer.
         Args:
             input_size (int): The size of the input features.
             hidden_dim (list): A list of hidden layer dimensions. Defaults to [256].
+            embed_dim (int): The dimension of the output embedding. Defaults to 512.
         """
         self.input_size = input_size
         self.hidden_dim = hidden_dim
+        self.embed_dim = embed_dim
 
         super().__init__()
 
@@ -80,9 +78,10 @@ class CNNLayer(LayerTemplate):
     A CNN layer that can be used for image data. It uses a pre-trained model
     from timm and adds a linear layer at the end to get the desired embedding dimension.
     """
-    def __init__(self, arch: str = 'resnet18', input_chan: int = 3) -> None:
+    def __init__(self, arch: str = 'resnet18', input_chan: int = 3, embed_dim : int = 512) -> None:
         self.arch = arch
         self.input_chan = input_chan
+        self.embed_dim = embed_dim
 
         super().__init__()
 

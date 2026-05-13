@@ -42,7 +42,7 @@ class MLPLayer(LayerTemplate):
     """
     A simple MLP layer that can be used for tabular data or any other data that can be flattened.
     """
-    def __init__(self, input_size : int, hidden_dim : list = [256]):
+    def __init__(self, input_size : int, hidden_dim : list = [256]) -> None:
         """
         Initialize the MLP layer.
         Args:
@@ -62,7 +62,8 @@ class MLPLayer(LayerTemplate):
         Initialize the MLP model with the specified input size, hidden dimensions,
         and output embedding dimension.
         Returns:
-            nn.Sequential: The initialized MLP model."""
+            nn.Sequential: The initialized MLP model.
+        """
         layers = [nn.Flatten()]
         curr = self.input_size
         
@@ -77,7 +78,8 @@ class MLPLayer(LayerTemplate):
 class CNNLayer(LayerTemplate):
     """
     A CNN layer that can be used for image data. It uses a pre-trained model
-    from timm and adds a linear layer at the end to get the desired embedding dimension."""
+    from timm and adds a linear layer at the end to get the desired embedding dimension.
+    """
     def __init__(self, arch: str = 'resnet18', input_chan: int = 3) -> None:
         self.arch = arch
         self.input_chan = input_chan

@@ -1,91 +1,98 @@
 class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
     """
-    Compute a median-based azimuthal (radial) power spectrum from an RGB patch.
-
-    Pipeline:
-        RGB -> normalize -> grayscale -> DC removal -> Hann window
-        -> FFT2 -> power spectrum -> radial binning (median) -> log transform
-
-    Output:
-        np.ndarray of shape (n_bins,), dtype float64.
-        Values are log-transformed median power per radial frequency bin.
+    Compute a mean-based azimuthal (radial) power spectrum from an RGB patch.
+    Output
+    ------
+    np.ndarray of shape (n_bins,), dtype float32.
+        Values are log-transformed mean power per radial frequency bin.
     """
 
     def __init__(
         self,
-        n_bins: int,
+        n_bins: int = 64,
         epsilon: float = DEFAULT_EPSILON,
     ):
+        """
+        Parameters
+        ----------
+        n_bins : int
+            Number of radial frequency bins.
+            Recommended: 64 for 256x256 patches.
+        epsilon : float
+            Numerical stability constant for log transform.
+        """
         if not isinstance(n_bins, (int, np.integer)) or n_bins <= 0:
             raise ValueError("n_bins must be a positive integer.")
 
         self.n_bins = int(n_bins)
-        self.epsilon = epsilon
+        self.epsilon = np.float32(epsilon)
 
-        self._normalization = RGBNormalizationPreprocessor(epsilon=epsilon)
-        # No unit-range normalization needed: DC removal handles centering.
-        self._to_gray = RGBToGrayPreprocessor(normalize=False, epsilon=epsilon)
+        self._normalization = RGBNormalizationPreprocessor()
+        self._to_gray = RGBToGrayPreprocessor()
 
-        # Precompute the 2D Hann window (fixed patch size).
-        w = np.hanning(PATCH_SIZE)
+        # Precompute Hann window in float32.
+        w = np.hanning(PATCH_SIZE).astype(np.float32)
         self._window_2d = np.outer(w, w)
 
-        # Precompute radial distance map and bin assignments.
-        self._bin_idx = self._build_bin_index()
+        # Precompute bin assignments and per-bin pixel counts.
+        self._bin_idx, self._bin_counts = self._build_bin_index()
 
-    def _build_bin_index(self) -> np.ndarray:
+    def _build_bin_index(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Precompute a flat array mapping each FFT coefficient to a radial bin.
+        Precompute radial bin assignment for each FFT coefficient and
+        the number of coefficients per bin.
 
         Returns
         -------
-        np.ndarray of shape (PATCH_SIZE * PATCH_SIZE,), dtype int32.
+        bin_idx : np.ndarray of shape (PATCH_SIZE * PATCH_SIZE,), int32.
+        bin_counts : np.ndarray of shape (n_bins,), float32.
+            Per-bin coefficient count. Used as denominator for mean.
+            Precomputed because it is constant across all images.
         """
-        cx = cy = PATCH_SIZE // 2  # 128
+        cx = cy = PATCH_SIZE // 2
 
         y, x = np.meshgrid(
             np.arange(PATCH_SIZE),
             np.arange(PATCH_SIZE),
             indexing="ij",
         )
-        r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
-        r_max = r.max()
+        r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2).astype(np.float32)
+        r_max = float(r.max())
 
-        bin_edges = np.linspace(0.0, r_max, self.n_bins + 1)
+        bin_edges = np.linspace(0.0, r_max, self.n_bins + 1, dtype=np.float32)
 
         bin_idx = np.digitize(r.ravel(), bin_edges, right=False) - 1
         bin_idx = np.clip(bin_idx, 0, self.n_bins - 1).astype(np.int32)
-        return bin_idx
+
+        bin_counts = np.bincount(
+            bin_idx, minlength=self.n_bins
+        ).astype(np.float32)
+
+        return bin_idx, bin_counts
 
     def __call__(self, image_patch: np.ndarray) -> np.ndarray:
         image = self._normalization(image_patch)
         gray = self._to_gray(image)
 
-        # Remove DC component and apply Hann window to reduce spectral leakage.
+        # Remove DC component and apply Hann window 
         gray_windowed = (gray - gray.mean()) * self._window_2d
 
-        # Compute 2D power spectrum.
+        # 2D power spectrum.
         F_shifted = np.fft.fftshift(np.fft.fft2(gray_windowed))
-        power_flat = (np.abs(F_shifted) ** 2).ravel()
+        power_flat = (np.abs(F_shifted) ** 2).astype(np.float32).ravel()
 
-        # Vectorized median per radial bin via argsort + searchsorted.
-        # Sort power values by bin assignment.
-        order = np.argsort(self._bin_idx, kind="stable")
-        sorted_bins = self._bin_idx[order]
-        sorted_power = power_flat[order]
+        # Mean power per radial bin
+        sums = np.bincount(
+            self._bin_idx,
+            weights=power_flat,
+            minlength=self.n_bins,
+        ).astype(np.float32)
 
-        # Find the start index of each bin using searchsorted.
-        bin_starts = np.searchsorted(sorted_bins, np.arange(self.n_bins))
-        bin_ends = np.searchsorted(sorted_bins, np.arange(self.n_bins), side="right")
+        # bins with zero counts stay at zero.
+        spectrum = np.where(
+            self._bin_counts > 0,
+            sums / self._bin_counts,
+            np.float32(0.0),
+        )
 
-        spectrum = np.zeros(self.n_bins, dtype=np.float64)
-        for b in range(self.n_bins):
-            s, e = bin_starts[b], bin_ends[b]
-            if s < e:
-                spectrum[b] = np.median(sorted_power[s:e])
-            # else: leave as 0.0 (rare edge case near outer frequency boundary)
-
-        return np.log(spectrum + self.epsilon)
-
-
-
+        return np.log(spectrum + self.epsilon).astype(np.float32)

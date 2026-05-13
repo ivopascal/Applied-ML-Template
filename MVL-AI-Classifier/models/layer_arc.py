@@ -10,7 +10,7 @@ class LayerTemplate(nn.Module, ABC):
     This is a template for the layers that will be used in the multi-view architecture.
     It defines the basic structure and the forward method.
     """
-    def __init__(self,) -> None:
+    def __init__(self) -> None:
         """
         Initialize the layer template.
         """

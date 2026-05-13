@@ -30,7 +30,7 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
         self._normalization = RGBNormalizationPreprocessor()
         self._to_gray = RGBToGrayPreprocessor()
 
-        # Precompute Hann window in float32.
+        # Precompute Hann window for better edge handling, reducing boundary artifacts
         w = np.hanning(PATCH_SIZE).astype(np.float32)
         self._window_2d = np.outer(w, w)
 
@@ -40,7 +40,8 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
     def _build_bin_index(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Precompute radial bin assignment for each FFT coefficient and
-        the number of coefficients per bin.
+        the number of coefficients per bin. Basically a lookup table for the
+        frequency pixels per radial bin
 
         Returns
         -------
@@ -49,21 +50,25 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
             Per-bin coefficient count. Used as denominator for mean.
             Precomputed because it is constant across all images.
         """
-        cx = cy = PATCH_SIZE // 2
-
+        cx = cy = PATCH_SIZE // 2 #reference point
+        #map coordinates
         y, x = np.meshgrid(
             np.arange(PATCH_SIZE),
             np.arange(PATCH_SIZE),
             indexing="ij",
         )
+        #radial distance from the center
         r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2).astype(np.float32)
         r_max = float(r.max())
 
+        #create radial bins
         bin_edges = np.linspace(0.0, r_max, self.n_bins + 1, dtype=np.float32)
 
+        #assign FFT pixels to a bin + edge case handling
         bin_idx = np.digitize(r.ravel(), bin_edges, right=False) - 1
         bin_idx = np.clip(bin_idx, 0, self.n_bins - 1).astype(np.int32)
 
+        #count number of coefficients
         bin_counts = np.bincount(
             bin_idx, minlength=self.n_bins
         ).astype(np.float32)
@@ -77,7 +82,7 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
         # Remove DC component and apply Hann window 
         gray_windowed = (gray - gray.mean()) * self._window_2d
 
-        # 2D power spectrum.
+        # 1D power spectrum 
         F_shifted = np.fft.fftshift(np.fft.fft2(gray_windowed))
         power_flat = (np.abs(F_shifted) ** 2).astype(np.float32).ravel()
 

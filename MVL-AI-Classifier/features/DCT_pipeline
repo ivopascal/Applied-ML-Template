@@ -1,0 +1,135 @@
+import numpy as np
+from scipy.fft import dctn
+
+from features.base import BasePreprocessor
+from features.constants import (
+    DEFAULT_EPSILON,
+    JPEG_BLOCK_SIZE,
+    JPEG_BLOCKS_PER_DIM,
+    JPEG_RECENTER_VALUE,
+    PATCH_SIZE,
+)
+from features.RGB_normalization_pipeline import RGBNormalizationPreprocessor
+
+
+class DCTPreprocessor(BasePreprocessor):
+    """
+    Compute per-channel mean absolute DCT-II coefficient maps from an RGB patch.
+
+    Each color channel is partitioned into non-overlapping 8×8 blocks
+    (the JPEG encoding block size). A 2-D DCT-II is applied to every block,
+    and the mean absolute value is accumulated across all blocks at each
+    frequency position (u, v).
+
+    Why this is complementary to AzimuthalPowerSpectrumPreprocessor
+    ---------------------------------------------------------------
+    * APS  : global, single-channel (grayscale), radially symmetric, FFT-based.
+    * DCT  : local (block-structured), three-channel (RGB), anisotropic
+             frequency grid, DCT-II-based.
+    AI generators frequently suppress or alter high-frequency DCT coefficients
+    in ways that deviate from natural JPEG compression statistics, and those
+    patterns differ across color channels—information APS cannot capture.
+
+    Output
+    ------
+    np.ndarray of shape (3, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE), dtype float32.
+        axis 0 : R, G, B channels.
+        axes 1–2 : mean |DCT[u, v]| across all JPEG_BLOCKS_PER_DIM² blocks,
+                   optionally log-transformed.
+    """
+
+    def __init__(
+        self,
+        log_scale: bool = True,
+        epsilon: float = DEFAULT_EPSILON,
+    ):
+        """
+        Parameters
+        ----------
+        log_scale : bool
+            If True, apply log(x + epsilon) to the mean absolute coefficient
+            map. Compresses the dynamic range and improves downstream linear
+            separability. Recommended: True.
+        epsilon : float
+            Numerical stability constant for the log transform.
+        """
+        self.log_scale = log_scale
+        self.epsilon = np.float32(epsilon)
+        self._normalization = RGBNormalizationPreprocessor()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _extract_blocks(self, image: np.ndarray) -> np.ndarray:
+        """
+        Partition a (PATCH_SIZE, PATCH_SIZE, 3) image into non-overlapping
+        8×8 blocks without any Python-level loops.
+
+        Uses a single reshape + transpose to produce a view (zero-copy when
+        the array is contiguous), keeping memory overhead minimal for large
+        dataset pipelines.
+
+        Returns
+        -------
+        np.ndarray of shape (3, JPEG_BLOCKS_PER_DIM², JPEG_BLOCK_SIZE,
+                             JPEG_BLOCK_SIZE), float32.
+            Axis order: (channel, block_index, block_row, block_col).
+        """
+        n = JPEG_BLOCKS_PER_DIM   # 32
+        bs = JPEG_BLOCK_SIZE      # 8
+
+        # (H, W, C)
+        # → (n, bs, n, bs, C)  – split spatial dims into (block_grid, pixels_in_block)
+        # → (C, n, n, bs, bs)  – channel-first; keep block grid and block pixels separate
+        # → (C, n*n, bs, bs)   – flatten block-grid into a single block index
+        blocks = (
+            image
+            .reshape(n, bs, n, bs, 3)
+            .transpose(4, 0, 2, 1, 3)
+            .reshape(3, n * n, bs, bs)
+        )
+        return np.ascontiguousarray(blocks, dtype=np.float32)
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
+
+    def __call__(self, image_patch: np.ndarray) -> np.ndarray:
+        """
+        Parameters
+        ----------
+        image_patch : np.ndarray of shape (PATCH_SIZE, PATCH_SIZE, 3),
+                      uint8 or float32.
+
+        Returns
+        -------
+        np.ndarray of shape (3, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE), float32.
+        """
+        # Step 1 – validate and cast to float32 in [0, 255]
+        image = self._normalization(image_patch)          # [0, 1], float32
+        image_255 = image * np.float32(255.0)             # scale back to [0, 255]
+
+        # Step 2 – JPEG-style level shift: center around 0 before DCT
+        image_centered = image_255 - np.float32(JPEG_RECENTER_VALUE)  # ≈ [-128, 127]
+
+        # Step 3 – extract all 8×8 blocks: (3, 1024, 8, 8)
+        blocks = self._extract_blocks(image_centered)
+
+        # Step 4 – 2-D DCT-II over the last two axes (block_row, block_col),
+        #          applied simultaneously to all blocks and channels.
+        #          norm="ortho" ensures energy conservation (parseval equality).
+        dct_blocks = dctn(blocks, axes=(-2, -1), norm="ortho")
+        # shape: (3, JPEG_BLOCKS_PER_DIM², JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE)
+
+        # Step 5 – aggregate: mean |DCT coefficient| across all blocks
+        mean_abs_dct = np.mean(
+            np.abs(dct_blocks), axis=1
+        ).astype(np.float32)
+        # shape: (3, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE)
+
+        # Step 6 – optional log-compression
+        if self.log_scale:
+            return np.log(mean_abs_dct + self.epsilon).astype(np.float32)
+
+        return mean_abs_dct

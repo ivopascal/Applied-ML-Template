@@ -1,3 +1,10 @@
+import numpy as np
+from scipy.ndimage import gaussian_filter
+
+from features.base import BasePreprocessor
+from features.constants import DEFAULT_EPSILON, PATCH_SIZE
+from features.RGB_normalization_pipeline import RGBNormalizationPreprocessor
+
 class NoiseResidualPreprocessor(BasePreprocessor):
     """
     Compute inter-channel noise correlation structure from an RGB patch.

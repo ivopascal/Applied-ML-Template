@@ -1,51 +1,170 @@
-class DCTPreprocessor(BasePreprocessor):
+import numpy as np
+from scipy.fft import dctn
+from scipy.stats import kurtosis
+
+from features.base import BasePreprocessor
+from features.constants import (
+    JPEG_BLOCK_SIZE,
+    JPEG_RECENTER_VALUE,
+    DEFAULT_EPSILON,
+)
+from features.RGB_normalization_pipeline import RGBNormalizationPreprocessor
+
+
+class DCTDistributionPreprocessor(BasePreprocessor):
     """
-    Compute per-channel DCT-II coefficient standard deviation maps from an
-    RGB patch.
+    Distribution-focused JPEG-DCT statistics designed to be minimally
+    redundant with APS.
+    This pipeline captures:
+        - coefficient sparsity
+        - heavy-tail behavior
+        - directional asymmetry
+        - local blockwise distribution structure
+        - chromatic frequency inconsistencies
 
     Output
     ------
-    np.ndarray of shape (3, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE), dtype float32.
-        axis 0 : R, G, B channels.
-        axes 1–2 : std of DCT[u, v] across all JPEG_BLOCKS_PER_DIM² blocks,
-                   optionally log-transformed.
+    np.ndarray of shape (3, 4, 8, 8), float32
+
+    Statistics per coefficient:
+        [0] mean absolute deviation
+        [1] kurtosis
+        [2] sparsity ratio
+        [3] sign asymmetry
     """
 
+    def __init__(
+        self,
+        epsilon: float = DEFAULT_EPSILON,
+        sparsity_threshold: float = 2.0,
+        log_scale: bool = True,
+    ):
+        self.epsilon = np.float32(epsilon)
+        self.sparsity_threshold = np.float32(sparsity_threshold)
+        self.log_scale = log_scale
+
+        self._normalization = RGBNormalizationPreprocessor()
+
     def __call__(self, image_patch: np.ndarray) -> np.ndarray:
-        """
-        Parameters
-        ----------
-        image_patch : np.ndarray of shape (PATCH_SIZE, PATCH_SIZE, 3),
-                      uint8 or float32.
 
-        Returns
-        -------
-        np.ndarray of shape (3, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE), float32.
-        """
-        # Step 1 – validate and cast to float32 in [0, 1]
+        # ------------------------------------------------------------
+        # 1. Normalize to [0,255]
+        # ------------------------------------------------------------
+
         image = self._normalization(image_patch)
-        image_255 = image * np.float32(255.0)
+        image = image.astype(np.float32) * np.float32(255.0)
 
-        # Step 2 – JPEG-style level shift: centre dynamic range before DCT
-        image_centered = image_255 - np.float32(JPEG_RECENTER_VALUE)  # ≈ [-128, 127]
+        # JPEG recentering
+        image -= np.float32(JPEG_RECENTER_VALUE)
 
-        # Step 3 – extract all 8×8 blocks: (3, 1024, 8, 8)
-        blocks = self._extract_blocks(image_centered)
+        # ------------------------------------------------------------
+        # 2. Extract non-overlapping 8x8 blocks
+        # ------------------------------------------------------------
 
-        # Step 4 – 2-D DCT-II, vectorised over all blocks and channels
-        dct_blocks = dctn(blocks, axes=(-2, -1), norm="ortho")
-        # shape: (3, JPEG_BLOCKS_PER_DIM², JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE)
+        blocks = self._extract_blocks(image)
+        # shape:
+        # (3, n_blocks, 8, 8)
 
-        # Step 5 – std of signed coefficients across blocks at each (u, v).
-        #          ddof=1: unbiased estimator.
-        #          Signed (not |·|) so the std reflects true coefficient spread,
-        #          not conflated magnitude. This is the key change from mean |·|:
-        #          std is not reconstructible from any global average → orthogonal to APS.
-        std_dct = np.std(dct_blocks, axis=1, ddof=1).astype(np.float32)
-        # shape: (3, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE)
+        # ------------------------------------------------------------
+        # 3. Batched orthonormal DCT-II
+        # ------------------------------------------------------------
 
-        # Step 6 – optional log-compression
+        dct_blocks = dctn(
+            blocks,
+            axes=(-2, -1),
+            norm="ortho",
+        ).astype(np.float32)
+
+        # Remove DC coefficient entirely.
+        # APS already captures global low-frequency energy strongly.
+        dct_blocks[:, :, 0, 0] = 0.0
+
+        # ------------------------------------------------------------
+        # 4. Distribution statistics
+        # ------------------------------------------------------------
+
+        abs_dct = np.abs(dct_blocks)
+
+        # ------------------------------------------------------------
+        # A. Mean absolute deviation (robust energy proxy)
+        # Less redundant than variance.
+        # ------------------------------------------------------------
+
+        mad = np.mean(abs_dct, axis=1)
+
+        # ------------------------------------------------------------
+        # B. Kurtosis
+        # Captures heavy tails / unnatural coefficient distributions.
+        # Very useful for synthetic artifacts.
+        # ------------------------------------------------------------
+
+        kurt = kurtosis(
+            dct_blocks,
+            axis=1,
+            fisher=True,
+            bias=False,
+        ).astype(np.float32)
+
+        # numerical cleanup
+        kurt = np.nan_to_num(
+            kurt,
+            nan=0.0,
+            posinf=0.0,
+            neginf=0.0,
+        )
+
+        # ------------------------------------------------------------
+        # C. Sparsity ratio
+        # Fraction of near-zero coefficients.
+        #
+        # JPEG quantization and generative models often produce
+        # abnormal sparsity patterns.
+        # ------------------------------------------------------------
+
+        sparse = (
+            abs_dct < self.sparsity_threshold
+        ).mean(axis=1).astype(np.float32)
+
+        # ------------------------------------------------------------
+        # D. Sign asymmetry
+        #
+        # Natural textures tend toward sign symmetry.
+        # Some generators and compression artifacts do not.
+        # ------------------------------------------------------------
+
+        positive = (dct_blocks > 0).mean(axis=1)
+        negative = (dct_blocks < 0).mean(axis=1)
+
+        sign_asym = (positive - negative).astype(np.float32)
+
+        # ------------------------------------------------------------
+        # 5. Stack statistics
+        # ------------------------------------------------------------
+
+        features = np.stack(
+            [
+                mad,
+                kurt,
+                sparse,
+                sign_asym,
+            ],
+            axis=1,
+        ).astype(np.float32)
+
+        # shape:
+        # (3, 4, 8, 8)
+
+        # ------------------------------------------------------------
+        # 6. Optional compression
+        # ------------------------------------------------------------
+
         if self.log_scale:
-            return np.log(std_dct + self.epsilon).astype(np.float32)
 
-        return std_dct
+            # Only apply log to strictly positive statistics.
+            features[:, 0] = np.log1p(features[:, 0])
+
+            # kurtosis can be negative -> leave untouched
+            # sign asymmetry signed -> leave untouched
+            # sparsity already bounded [0,1]
+
+        return features

@@ -15,39 +15,6 @@ class DCTDistributionPreprocessor(BasePreprocessor):
     """
     Per-channel distributional statistics of JPEG block DCT-II coefficients.
 
-    Each color channel is partitioned into non-overlapping 8×8 blocks.
-    A 2-D orthonormal DCT-II is applied to every block, and four statistics
-    are computed across all blocks at each frequency position (u, v).
-
-    Statistics
-    ----------
-    [0] robust_dispersion  – median absolute deviation (MAD) across blocks.
-                             Measures spatial non-stationarity of each frequency
-                             component. Not recoverable from APS, which captures
-                             only the global mean energy profile.
-    [1] kurtosis           – unbiased Fisher excess kurtosis across blocks.
-                             Captures heavy-tail / peaky coefficient distributions
-                             characteristic of quantization or generative artifacts.
-    [2] sparsity           – fraction of blocks where |coeff| is below
-                             sparsity_threshold × per-channel AC RMS.
-                             The RMS normaliser is a single global scalar per
-                             channel, making the threshold scale-invariant across
-                             JPEG quality settings. Structurally independent from
-                             robust_dispersion: MAD encodes per-position
-                             distribution shape; sparsity is normalised by a
-                             global channel-level energy scalar.
-    [3] sign_asym          – fraction_positive − fraction_negative across blocks.
-                             Natural textures tend toward sign symmetry; AI
-                             generators and quantization artifacts can introduce
-                             directional bias at specific (u, v) positions.
-
-    DC coefficient
-    --------------
-    The (0, 0) coefficient encodes mean block brightness and is already
-    captured more directly by the APS low-frequency bins. It is zeroed before
-    all statistics are computed; the corresponding output positions are set to
-    0.0 by explicit convention.
-
     Output
     ------
     np.ndarray of shape (3, 4, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE), float32.
@@ -79,6 +46,7 @@ class DCTDistributionPreprocessor(BasePreprocessor):
             or signed ranges that do not benefit from log compression and are
             left untransformed.
         """
+
         if sparsity_threshold <= 0:
             raise ValueError("sparsity_threshold must be positive.")
 
@@ -86,10 +54,6 @@ class DCTDistributionPreprocessor(BasePreprocessor):
         self.sparsity_threshold = np.float32(sparsity_threshold)
         self.log_compress_dispersion = bool(log_compress_dispersion)
         self._normalization = RGBNormalizationPreprocessor()
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
 
     def _extract_blocks(self, image: np.ndarray) -> np.ndarray:
         """
@@ -163,9 +127,6 @@ class DCTDistributionPreprocessor(BasePreprocessor):
 
         return np.nan_to_num(kurt, nan=0.0, posinf=0.0, neginf=0.0)
 
-    # ------------------------------------------------------------------
-    # Public interface
-    # ------------------------------------------------------------------
 
     def __call__(self, image_patch: np.ndarray) -> np.ndarray:
         """

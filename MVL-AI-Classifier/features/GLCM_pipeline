@@ -1,3 +1,10 @@
+import numpy as np
+
+from features.base import BasePreprocessor
+from features.constants import PATCH_SIZE
+from features.RGB_normalization_pipeline import RGBNormalizationPreprocessor
+from features.RGB_Gray_pipeline import RGBToGrayPreprocessor
+
 class GLCMPreprocessor(BasePreprocessor):
     """
     Compute normalized Gray-Level Co-occurrence Matrices (GLCMs) from a

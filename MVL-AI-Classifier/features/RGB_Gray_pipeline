@@ -1,3 +1,8 @@
+import numpy as np
+
+from features.base import BasePreprocessor
+
+
 class RGBToGrayPreprocessor(BasePreprocessor):
     """
     Convert a float32 RGB image to single-channel grayscale.

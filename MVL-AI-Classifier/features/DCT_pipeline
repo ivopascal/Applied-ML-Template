@@ -109,21 +109,23 @@ class DCTDistributionPreprocessor(BasePreprocessor):
         image_centered = image - np.float32(JPEG_RECENTER_VALUE)  #zero center data
         blocks = self._extract_blocks(image_centered)
 
+        # 2D DCT-II to each 8×8 block only, produces a frequency map
         dct_blocks = dctn(
             blocks, axes=(-2, -1), norm="ortho"
         ).astype(np.float32)
 
-        # Mean-center block DCs rather than zeroing them entirely.
-        # The global mean of block DCs is captured by APS low-frequency bins.
+        #  global mean DC per channel. Shape: (3, 1)
         # Spatial variation of block means is unique to this view.
         global_dc_mean = dct_blocks[:, :, 0, 0].mean(
             axis=1, keepdims=True
         )
-        dct_blocks[:, :, 0, 0] -= global_dc_mean
+        dct_blocks[:, :, 0, 0] -= global_dc_mean #average of all block DCs is now zero
 
         abs_dct = np.abs(dct_blocks)
 
-        # A: Robust dispersion (MAD across blocks per position).
+        # A: Robust dispersion: Median Absolute Deviation. 
+        # For each frequency position (u, v) in each channel, 
+        # compute the median coefficient value across all 1024 blocks.
         block_median = np.median(dct_blocks, axis=1, keepdims=True)
         robust_dispersion = np.median(
             np.abs(dct_blocks - block_median), axis=1
@@ -132,27 +134,36 @@ class DCTDistributionPreprocessor(BasePreprocessor):
         # B: Unbiased excess kurtosis (float64 internally).
         kurt = self._unbiased_excess_kurtosis(dct_blocks)
 
-        # C: Scale-invariant sparsity (global AC RMS threshold).
+        # C: Scale-invariant sparsity: Root Mean Square.
+        # define sparsity threshold: mean squared coefficient value across all blocks and all frequency positions in that channel. 
+        # Shape: (3, 1, 1, 1).
         ac_rms = np.sqrt(
             (dct_blocks ** 2).mean(axis=(1, 2, 3), keepdims=True)
             + self.epsilon
         )
+        #define number of near-zero coefficients using this threshold
         sparse = (
             abs_dct < (self.sparsity_threshold * ac_rms)
         ).mean(axis=1).astype(np.float32)
 
-        # D: Sign asymmetry.
+        # D: Sign asymmetry, ratio positive to negative coefficients
         sign_asym = (
             (dct_blocks > 0).mean(axis=1)
             - (dct_blocks < 0).mean(axis=1)
         ).astype(np.float32)
 
+
+        #np.stack combines four arrays of statistics: from (3, 8, 8) to (3, 4, 8, 8).
+        #features[c, 0, u, v] = robust dispersion of channel c at frequency (u, v)
+        #features[c, 1, u, v] = kurtosis
+        #features[c, 2, u, v] = sparsity
+        #features[c, 3, u, v] = sign asymmetry
         features = np.stack(
             [robust_dispersion, kurt, sparse, sign_asym],
             axis=1,
         ).astype(np.float32)
 
-        if self.log_compress_dispersion:
+        if self.log_compress_dispersion: #optionally scale MAD for better handling
             features[:, 0] = np.log(features[:, 0] + self.epsilon)
 
         return features

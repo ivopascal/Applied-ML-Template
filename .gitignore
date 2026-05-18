@@ -4,5 +4,4 @@ __pycache__/
 .DS_Store
 venv/
 .env
-data/raw
-data/subset
+data/

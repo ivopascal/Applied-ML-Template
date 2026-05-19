@@ -1,0 +1,173 @@
+import numpy as np
+from scipy.ndimage import gaussian_filter
+
+from features.base_processor import BasePreprocessor
+from MVL_AI_Classifier.constants import DEFAULT_EPSILON, PATCH_SIZE
+from features.rgb_normalization_pipeline import RGBNormalizationPreprocessor
+
+
+class NoiseResidualPreprocessor(BasePreprocessor):
+    """
+    Compute inter-channel noise correlation structure from an RGB patch.
+
+    For each spatial window of size (window_size x window_size), compute
+    the Pearson correlation coefficient between the noise residuals of
+    each pair of color channels (R-G, R-B, G-B).
+
+    The noise residual is the high-frequency component obtained by
+    subtracting a Gaussian-blurred version of each channel:
+
+        residual_c = channel_c - gaussian_blur(channel_c)
+
+    Output
+    ------
+    np.ndarray of shape (3, windows_per_dim, windows_per_dim), float32.
+        axis 0: [corr_RG, corr_RB, corr_GB]
+        Each value is a Pearson correlation in [-1, 1].
+        Degenerate windows (constant residual) are set to 0.0.
+
+    With default window_size=16 and PATCH_SIZE=256: shape (3, 16, 16).
+    """
+
+    # Channel pairs: indices into the 3-channel axis.
+    _PAIRS = [(0, 1), (0, 2), (1, 2)]  # RG, RB, GB
+
+    def __init__(
+        self,
+        sigma: float = 1.0,
+        window_size: int = 16,
+        epsilon: float = DEFAULT_EPSILON,
+    ):
+        """
+        Parameters
+        ----------
+        sigma : float
+            Standard deviation of the Gaussian low-pass filter.
+        window_size : int
+            Side length of spatial windows for local correlation.
+            Must divide PATCH_SIZE exactly.
+        epsilon : float
+            Numerical stability for Pearson denominator.
+        """
+        if PATCH_SIZE % window_size != 0:
+            raise ValueError(
+                f"window_size={window_size} must divide "
+                f"PATCH_SIZE={PATCH_SIZE} exactly."
+            )
+
+        self.sigma = sigma
+        self.window_size = window_size
+        self.epsilon = np.float32(epsilon)
+        self.windows_per_dim = (
+            PATCH_SIZE // window_size
+        )  # 16 windows horizontally, 16 windows vertically
+
+        self._normalization = RGBNormalizationPreprocessor()
+
+    def _compute_residuals(self, image: np.ndarray) -> np.ndarray:
+        """
+        Per-channel Gaussian high-pass filter.
+
+        Returns
+        -------
+        np.ndarray of shape (PATCH_SIZE, PATCH_SIZE, 3), float32.
+
+        """
+        lowpass = gaussian_filter(
+            image,
+            sigma=(
+                self.sigma,
+                self.sigma,
+                0.0,
+            ),  # blur spatial dimensions, NOT colour channels
+            mode="reflect",  # edge handling -> abcd|dcba
+        )
+        return (image - lowpass).astype(np.float32)
+
+    def _reshape_to_windows(self, channel: np.ndarray) -> np.ndarray:
+        """
+        Reshape a (PATCH_SIZE, PATCH_SIZE) channel into windowed form.
+
+        Returns
+        -------
+        np.ndarray of shape (wpd, wpd, ws * ws), float32.
+            Last axis contains the flattened pixel values within each window.
+            (window_row, window_col, flattened_pixels), every window becomes a vector
+        """
+        ws = self.window_size
+        wpd = self.windows_per_dim
+        return (
+            channel.reshape(
+                wpd, ws, wpd, ws
+            )  # (window_row, pixels_inside_window_y, window_col, pixels_inside_window_x)
+            .transpose(
+                0, 2, 1, 3
+            )  # (window_row, window_col, pixels_inside_y, pixels_inside_window_x)
+            .reshape(
+                wpd, wpd, ws * ws
+            )  # every window becomes a vector for pearson correlaton calculations
+        )
+
+    def _pearson_from_windows(
+        self,
+        a_w: np.ndarray,
+        b_w: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Pearson correlation between two pre-windowed channel arrays.
+
+        Parameters
+        ----------
+        a_w, b_w : np.ndarray of shape (wpd, wpd, ws*ws), float32.
+
+        Returns
+        -------
+        np.ndarray of shape (wpd, wpd), float32.
+            Pearson r in [-1, 1], Degenerate windows are set to 0.0.
+        """
+        a_c = a_w - a_w.mean(
+            axis=-1, keepdims=True
+        )  # mean centering to cancel out luminance
+        b_c = b_w - b_w.mean(axis=-1, keepdims=True)
+
+        numerator = (a_c * b_c).sum(axis=-1)
+
+        a_ss = (a_c**2).sum(axis=-1)
+        b_ss = (b_c**2).sum(axis=-1)
+
+        # Detect degenerate windows: variance effectively zero.
+        valid = (a_ss > self.epsilon) & (b_ss > self.epsilon)
+
+        denom = np.sqrt(a_ss * b_ss)
+
+        # Safe division: only divide where both channels have variance.
+        corr = np.where(
+            valid,
+            numerator / (denom + self.epsilon),
+            np.float32(0.0),
+        )
+
+        return corr.astype(np.float32)
+
+    def __call__(self, image_patch: np.ndarray) -> np.ndarray:
+        image = self._normalization(image_patch)
+        residuals = self._compute_residuals(image)
+
+        # Reshape each channel once, reuse across all pair computations.
+        windowed = [
+            self._reshape_to_windows(
+                residuals[..., c]
+            )  # all rows, all columns, channel c
+            for c in range(3)
+        ]  # Three arrays of shape (wpd, wpd, ws*ws)
+
+        # Compute correlation for each channel pair.
+        correlations = np.stack(
+            [
+                self._pearson_from_windows(windowed[i], windowed[j])
+                for i, j in self._PAIRS
+            ],
+            axis=0,
+        )  # (3, wpd, wpd)
+
+        return correlations

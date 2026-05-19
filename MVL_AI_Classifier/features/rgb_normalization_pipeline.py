@@ -1,7 +1,7 @@
 import numpy as np
 
 from features.base_processor import BasePreprocessor
-from features.constants import PATCH_SIZE
+from MVL_AI_Classifier.constants import PATCH_SIZE
 
 
 class RGBNormalizationPreprocessor(BasePreprocessor):

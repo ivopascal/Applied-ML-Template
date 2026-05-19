@@ -1,7 +1,7 @@
 import numpy as np
 
 from features.base_processor import BasePreprocessor
-from features.constants import DEFAULT_EPSILON, PATCH_SIZE
+from MVL_AI_Classifier.constants import DEFAULT_EPSILON, PATCH_SIZE
 from features.rgb_normalization_pipeline import RGBNormalizationPreprocessor
 from features.rgb_gray_pipeline import RGBToGrayPreprocessor
 

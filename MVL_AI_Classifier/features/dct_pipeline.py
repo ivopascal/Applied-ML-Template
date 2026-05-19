@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.fft import dctn
 from features.base_processor import BasePreprocessor
-from features.constants import (
+from MVL_AI_Classifier.constants import (
     DEFAULT_EPSILON,
     JPEG_BLOCK_SIZE,
     JPEG_BLOCKS_PER_DIM,

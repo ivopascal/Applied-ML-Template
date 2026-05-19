@@ -1,9 +1,10 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-from features.base import BasePreprocessor
+from features.base_processor import BasePreprocessor
 from features.constants import DEFAULT_EPSILON, PATCH_SIZE
-from features.RGB_normalization_pipeline import RGBNormalizationPreprocessor
+from features.rgb_normalization_pipeline import RGBNormalizationPreprocessor
+
 
 class NoiseResidualPreprocessor(BasePreprocessor):
     """
@@ -56,8 +57,10 @@ class NoiseResidualPreprocessor(BasePreprocessor):
 
         self.sigma = sigma
         self.window_size = window_size
-        self.epsilon = epsilon
-        self.windows_per_dim = PATCH_SIZE // window_size #16 windows horizontally, 16 windows vertically
+        self.epsilon = np.float32(epsilon)
+        self.windows_per_dim = (
+            PATCH_SIZE // window_size
+        )  # 16 windows horizontally, 16 windows vertically
 
         self._normalization = RGBNormalizationPreprocessor()
 
@@ -72,10 +75,14 @@ class NoiseResidualPreprocessor(BasePreprocessor):
         """
         lowpass = gaussian_filter(
             image,
-            sigma=(self.sigma, self.sigma, 0.0), #blur spatial dimensions, NOT colour channels
-            mode="reflect", #edge handling -> abcd|dcba 
+            sigma=(
+                self.sigma,
+                self.sigma,
+                0.0,
+            ),  # blur spatial dimensions, NOT colour channels
+            mode="reflect",  # edge handling -> abcd|dcba
         )
-        return (image - lowpass).astype(np.float32) 
+        return (image - lowpass).astype(np.float32)
 
     def _reshape_to_windows(self, channel: np.ndarray) -> np.ndarray:
         """
@@ -90,10 +97,15 @@ class NoiseResidualPreprocessor(BasePreprocessor):
         ws = self.window_size
         wpd = self.windows_per_dim
         return (
-            channel
-            .reshape(wpd, ws, wpd, ws) # (window_row, pixels_inside_window_y, window_col, pixels_inside_window_x)
-            .transpose(0, 2, 1, 3) # (window_row, window_col, pixels_inside_y, pixels_inside_window_x)
-            .reshape(wpd, wpd, ws * ws) #every window becomes a vector for pearson correlaton calculations
+            channel.reshape(
+                wpd, ws, wpd, ws
+            )  # (window_row, pixels_inside_window_y, window_col, pixels_inside_window_x)
+            .transpose(
+                0, 2, 1, 3
+            )  # (window_row, window_col, pixels_inside_y, pixels_inside_window_x)
+            .reshape(
+                wpd, wpd, ws * ws
+            )  # every window becomes a vector for pearson correlaton calculations
         )
 
     def _pearson_from_windows(
@@ -113,14 +125,15 @@ class NoiseResidualPreprocessor(BasePreprocessor):
         np.ndarray of shape (wpd, wpd), float32.
             Pearson r in [-1, 1], Degenerate windows are set to 0.0.
         """
-        a_c = a_w - a_w.mean(axis=-1, keepdims=True) #mean centering to cancel out luminance
+        a_c = a_w - a_w.mean(
+            axis=-1, keepdims=True
+        )  # mean centering to cancel out luminance
         b_c = b_w - b_w.mean(axis=-1, keepdims=True)
 
-        
         numerator = (a_c * b_c).sum(axis=-1)
 
-        a_ss = (a_c ** 2).sum(axis=-1)
-        b_ss = (b_c ** 2).sum(axis=-1)
+        a_ss = (a_c**2).sum(axis=-1)
+        b_ss = (b_c**2).sum(axis=-1)
 
         # Detect degenerate windows: variance effectively zero.
         valid = (a_ss > self.epsilon) & (b_ss > self.epsilon)
@@ -142,7 +155,9 @@ class NoiseResidualPreprocessor(BasePreprocessor):
 
         # Reshape each channel once, reuse across all pair computations.
         windowed = [
-            self._reshape_to_windows(residuals[..., c]) #all rows, all columns, channel c
+            self._reshape_to_windows(
+                residuals[..., c]
+            )  # all rows, all columns, channel c
             for c in range(3)
         ]  # Three arrays of shape (wpd, wpd, ws*ws)
 

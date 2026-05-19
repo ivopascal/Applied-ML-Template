@@ -1,7 +1,8 @@
 import numpy as np
 
-from features.base import BasePreprocessor
+from features.base_processor import BasePreprocessor
 from features.constants import PATCH_SIZE
+
 
 class RGBNormalizationPreprocessor(BasePreprocessor):
     """
@@ -20,8 +21,8 @@ class RGBNormalizationPreprocessor(BasePreprocessor):
                 f"Expected shape ({PATCH_SIZE}, {PATCH_SIZE}, 3), "
                 f"got {image.shape}."
             )
-        if not np.isfinite(image.sum()): #NaN or inf will lead to undefined sum
-            bad_mask = ~np.isfinite(image) #bitwise NOT operator
+        if not np.isfinite(image.sum()):  # NaN or inf will lead to undefined sum
+            bad_mask = ~np.isfinite(image)  # bitwise NOT operator
             image = np.where(bad_mask, np.float32(0.0), image)
 
         return image

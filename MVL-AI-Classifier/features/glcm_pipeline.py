@@ -1,9 +1,9 @@
 import numpy as np
 
-from features.base import BasePreprocessor
-from features.constants import PATCH_SIZE
-from features.RGB_normalization_pipeline import RGBNormalizationPreprocessor
-from features.RGB_Gray_pipeline import RGBToGrayPreprocessor
+from features.base_processor import BasePreprocessor
+from features.rgb_normalization_pipeline import RGBNormalizationPreprocessor
+from features.rgb_gray_pipeline import RGBToGrayPreprocessor
+
 
 class GLCMPreprocessor(BasePreprocessor):
     """
@@ -24,10 +24,10 @@ class GLCMPreprocessor(BasePreprocessor):
     """
 
     _OFFSETS = [
-        (1,  0),   # horizontal
-        (0,  1),   # vertical
-        (1,  1),   # diagonal
-        (-1, 1),   # anti-diagonal
+        (1, 0),  # horizontal
+        (0, 1),  # vertical
+        (1, 1),  # diagonal
+        (-1, 1),  # anti-diagonal
     ]
 
     def __init__(
@@ -46,10 +46,10 @@ class GLCMPreprocessor(BasePreprocessor):
         if not isinstance(n_levels, (int, np.integer)) or n_levels <= 0:
             raise ValueError("n_levels must be a positive integer.")
 
-        #256 possible levels of brightness per pixel, reduced to n_levels for robustness
+        # 256 possible levels of brightness per pixel, reduced to n_levels for robustness
         self.n_levels = int(n_levels)
         self.symmetric = symmetric
-        self._scale = np.float32(self.n_levels / 255.0) 
+        self._scale = np.float32(self.n_levels / 255.0)
 
         self._normalization = RGBNormalizationPreprocessor()
         self._to_gray = RGBToGrayPreprocessor()
@@ -67,27 +67,27 @@ class GLCMPreprocessor(BasePreprocessor):
         -------
         np.ndarray of shape (n_levels, n_levels), dtype float32.
         """
-        h, w = qimg.shape #quantized image shape
+        h, w = qimg.shape  # quantized image shape
 
-        #determine valid pixel pairs
+        # determine valid pixel pairs
         y_ref = slice(max(0, -dy), h - max(0, dy))
-        y_nb  = slice(max(0,  dy), h - max(0, -dy))
+        y_nb = slice(max(0, dy), h - max(0, -dy))
         x_ref = slice(max(0, -dx), w - max(0, dx))
-        x_nb  = slice(max(0,  dx), w - max(0, -dx))
+        x_nb = slice(max(0, dx), w - max(0, -dx))
 
-        #create two aligned vectors for reference and neighbor pixels
-        #ravel flattens arrays into vectors
+        # create two aligned vectors for reference and neighbor pixels
+        # ravel flattens arrays into vectors
         ref = qimg[y_ref, x_ref].ravel()
-        nb  = qimg[y_nb,  x_nb].ravel()
+        nb = qimg[y_nb, x_nb].ravel()
 
-        #count matrix with row = reference intensity, column = neighbor intensity
+        # count matrix with row = reference intensity, column = neighbor intensity
         G = np.zeros((self.n_levels, self.n_levels), dtype=np.float32)
         np.add.at(G, (ref, nb), np.float32(1.0))
 
-        if self.symmetric: # (3,7) == (7,3)
+        if self.symmetric:  # (3,7) == (7,3)
             G = G + G.T
 
-        #normalization
+        # normalization
         total = G.sum()
         if total > 0:
             G /= total

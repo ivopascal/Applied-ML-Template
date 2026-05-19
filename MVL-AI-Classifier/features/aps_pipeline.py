@@ -1,9 +1,10 @@
 import numpy as np
 
-from features.base import BasePreprocessor
+from features.base_processor import BasePreprocessor
 from features.constants import DEFAULT_EPSILON, PATCH_SIZE
-from features.RGB_normalization_pipeline import RGBNormalizationPreprocessor
-from features.RGB_Gray_pipeline import RGBToGrayPreprocessor
+from features.rgb_normalization_pipeline import RGBNormalizationPreprocessor
+from features.rgb_gray_pipeline import RGBToGrayPreprocessor
+
 
 class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
     """
@@ -57,28 +58,26 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
             Per-bin coefficient count. Used as denominator for mean.
             Precomputed because it is constant across all images.
         """
-        cx = cy = PATCH_SIZE // 2 #reference point
-        #map coordinates
+        cx = cy = PATCH_SIZE // 2  # reference point
+        # map coordinates
         y, x = np.meshgrid(
             np.arange(PATCH_SIZE),
             np.arange(PATCH_SIZE),
             indexing="ij",
         )
-        #radial distance from the center
+        # radial distance from the center
         r = np.sqrt((x - cx) ** 2 + (y - cy) ** 2).astype(np.float32)
         r_max = float(r.max())
 
-        #create radial bins
+        # create radial bins
         bin_edges = np.linspace(0.0, r_max, self.n_bins + 1, dtype=np.float32)
 
-        #assign FFT pixels to a bin + edge case handling
+        # assign FFT pixels to a bin + edge case handling
         bin_idx = np.digitize(r.ravel(), bin_edges, right=False) - 1
         bin_idx = np.clip(bin_idx, 0, self.n_bins - 1).astype(np.int32)
 
-        #count number of coefficients
-        bin_counts = np.bincount(
-            bin_idx, minlength=self.n_bins
-        ).astype(np.float32)
+        # count number of coefficients
+        bin_counts = np.bincount(bin_idx, minlength=self.n_bins).astype(np.float32)
 
         return bin_idx, bin_counts
 
@@ -86,10 +85,10 @@ class AzimuthalPowerSpectrumPreprocessor(BasePreprocessor):
         image = self._normalization(image_patch)
         gray = self._to_gray(image)
 
-        # Remove DC component and apply Hann window 
+        # Remove DC component and apply Hann window
         gray_windowed = (gray - gray.mean()) * self._window_2d
 
-        # 1D power spectrum 
+        # 1D power spectrum
         F_shifted = np.fft.fftshift(np.fft.fft2(gray_windowed))
         power_flat = (np.abs(F_shifted) ** 2).astype(np.float32).ravel()
 

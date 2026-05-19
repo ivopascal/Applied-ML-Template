@@ -1,0 +1,172 @@
+import numpy as np
+from scipy.fft import dctn
+from features.base_processor import BasePreprocessor
+from MVL_AI_Classifier.constants import (
+    DEFAULT_EPSILON,
+    JPEG_BLOCK_SIZE,
+    JPEG_BLOCKS_PER_DIM,
+    JPEG_RECENTER_VALUE,
+)
+from features.rgb_normalization_pipeline import RGBNormalizationPreprocessor
+
+
+class DCTDistributionPreprocessor(BasePreprocessor):
+    """
+    Per-channel distributional statistics of JPEG block DCT-II coefficients.
+
+
+    Output
+    ------
+    np.ndarray of shape (3, 4, JPEG_BLOCK_SIZE, JPEG_BLOCK_SIZE), float32.
+        axis 0 : R, G, B channels.
+        axis 1 : [robust_dispersion, kurtosis, sparsity, sign_asym].
+        axes 2-3 : DCT frequency position (u, v).
+    """
+
+    def __init__(
+        self,
+        epsilon: float = DEFAULT_EPSILON,
+        sparsity_threshold: float = 0.10,
+        log_compress_dispersion: bool = True,
+    ):
+        if sparsity_threshold <= 0:
+            raise ValueError("sparsity_threshold must be positive.")
+
+        self.epsilon = np.float32(epsilon)
+        # sparsity threshold = what fraction of the image's own energy counts as "near zero"
+        self.sparsity_threshold = np.float32(sparsity_threshold)
+        self.log_compress_dispersion = bool(log_compress_dispersion)
+        self._normalization = RGBNormalizationPreprocessor()
+
+    def _extract_blocks(self, image: np.ndarray) -> np.ndarray:
+        """
+        Partition (PATCH_SIZE, PATCH_SIZE, 3) into non-overlapping 8x8 blocks.
+
+        Returns
+        -------
+        np.ndarray of shape (3, N_BLOCKS, 8, 8), float32, C-contiguous for effectiveness
+        """
+        n = JPEG_BLOCKS_PER_DIM  # 32, == 256 / 8
+        bs = JPEG_BLOCK_SIZE  # 8
+        blocks = (
+            image
+            # reshape from 256x256x3 to 32x8x32x8x3,
+            # -> (block row, pixel row, block column, pixel column, color channel
+            .reshape(n, bs, n, bs, 3)
+            # rearrange for beter processing,
+            # -> (channel, block_row, block_col, pixel_row, pixel_col) = (3, 32, 32, 8, 8)
+            .transpose(4, 0, 2, 1, 3)
+            # flatten blockgrid to (3, 1024, 8, 8)
+            .reshape(3, n * n, bs, bs)
+        )
+        return np.ascontiguousarray(blocks, dtype=np.float32)
+
+    def _unbiased_excess_kurtosis(self, x: np.ndarray) -> np.ndarray:
+        """
+        Unbiased Fisher excess kurtosis along axis 1
+        context: how heavy-tailed a distribution is.
+        Gaussian (normal) distribution is excess kurtosis = 0.
+        more extreme outliers have positive kurtosis, tight distribution have negative
+
+        Uses float64 for the critical m4/m2² - 3 subtraction to avoid
+        catastrophic cancellation in float32 when kurtosis is near zero.
+
+        Parameters
+        ----------
+        x : shape (3, n_blocks, 8, 8), float32.
+
+        Returns
+        -------
+        shape (3, 8, 8), float32.
+        """
+        n = x.shape[
+            1
+        ]  # averaging over the 1024 blocks -> from (3, 1024, 8, 8) to (3, 1, 8, 8)
+        mu = x.mean(axis=1, keepdims=True)
+        d = (
+            x - mu
+        )  # deviation of every coefficient from the mean coefficient at that frequency position
+
+        # Critical computation in float64 to preserve precision in funky statistics
+        m2 = (d * d).mean(axis=1).astype(np.float64)  # average of squared deviations
+        m4 = (
+            (d * d * d * d).mean(axis=1).astype(np.float64)
+        )  # average of squared deviations raised to the fourth power
+
+        # Biased excess kurtosis first (subtraction near 3, not near 3069).
+        g2 = np.where(
+            m2 > self.epsilon,
+            m4 / (m2 * m2 + self.epsilon) - 3.0,
+            0.0,
+        )
+        # Bias correction: G2 = (n-1)/((n-2)(n-3)) * ((n+1)*g2 + 6)
+        #  standard sample excess kurtosis correction from mathematical statistics
+        correction = (n - 1) / ((n - 2) * (n - 3))
+        kurt = correction * ((n + 1) * g2 + 6.0)
+
+        result = kurt.astype(np.float32)
+        if not np.isfinite(result).all():
+            result = np.nan_to_num(
+                result, nan=0.0, posinf=0.0, neginf=0.0
+            )  # better safe than sorry
+
+        return result
+
+    def __call__(self, image_patch: np.ndarray) -> np.ndarray:
+        image = self._normalization(image_patch)
+        image_centered = image - np.float32(JPEG_RECENTER_VALUE)  # zero center data
+        blocks = self._extract_blocks(image_centered)
+
+        # 2D DCT-II to each 8×8 block only, produces a frequency map
+        dct_blocks = dctn(blocks, axes=(-2, -1), norm="ortho").astype(np.float32)
+
+        #  global mean DC per channel. Shape: (3, 1)
+        # Spatial variation of block means is unique to this view.
+        global_dc_mean = dct_blocks[:, :, 0, 0].mean(axis=1, keepdims=True)
+        dct_blocks[:, :, 0, 0] -= global_dc_mean  # average of all block DCs is now zero
+
+        abs_dct = np.abs(dct_blocks)
+
+        # A: Robust dispersion: Median Absolute Deviation.
+        # For each frequency position (u, v) in each channel,
+        # compute the median coefficient value across all 1024 blocks.
+        block_median = np.median(dct_blocks, axis=1, keepdims=True)
+        robust_dispersion = np.median(np.abs(dct_blocks - block_median), axis=1).astype(
+            np.float32
+        )
+
+        # B: Unbiased excess kurtosis (float64 internally).
+        kurt = self._unbiased_excess_kurtosis(dct_blocks)
+
+        # C: Scale-invariant sparsity: Root Mean Square.
+        # define sparsity threshold: mean squared coefficient value across all blocks and all frequency positions in that channel.
+        # Shape: (3, 1, 1, 1).
+        ac_rms = np.sqrt(
+            (dct_blocks**2).mean(axis=(1, 2, 3), keepdims=True) + self.epsilon
+        )
+        # define number of near-zero coefficients using this threshold
+        sparse = (
+            (abs_dct < (self.sparsity_threshold * ac_rms))
+            .mean(axis=1)
+            .astype(np.float32)
+        )
+
+        # D: Sign asymmetry, ratio positive to negative coefficients
+        sign_asym = (
+            (dct_blocks > 0).mean(axis=1) - (dct_blocks < 0).mean(axis=1)
+        ).astype(np.float32)
+
+        # np.stack combines four arrays of statistics: from (3, 8, 8) to (3, 4, 8, 8).
+        # features[c, 0, u, v] = robust dispersion of channel c at frequency (u, v)
+        # features[c, 1, u, v] = kurtosis
+        # features[c, 2, u, v] = sparsity
+        # features[c, 3, u, v] = sign asymmetry
+        features = np.stack(
+            [robust_dispersion, kurt, sparse, sign_asym],
+            axis=1,
+        ).astype(np.float32)
+
+        if self.log_compress_dispersion:  # optionally scale MAD for better handling
+            features[:, 0] = np.log(features[:, 0] + self.epsilon)
+
+        return features

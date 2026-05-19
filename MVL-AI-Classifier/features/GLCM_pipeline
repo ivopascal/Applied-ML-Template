@@ -32,14 +32,14 @@ class GLCMPreprocessor(BasePreprocessor):
 
     def __init__(
         self,
-        n_levels: int = 16,
+        n_levels: int = 32,
         symmetric: bool = True,
     ):
         """
         Parameters
         ----------
         n_levels : int
-            Number of quantization levels for intensity space, default 16.
+            Number of quantization levels for intensity space, default 32.
         symmetric : bool
             If True, GLCM is symmetrized: G = G + G.T.
         """

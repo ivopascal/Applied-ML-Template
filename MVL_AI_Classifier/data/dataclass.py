@@ -12,9 +12,10 @@ class DataClass(Dataset):
         super().__init__()
         self.view_configuration = view_configuration
         self.split = split
+        self.current_epoch
         self.df = pd.read_parquet(parquet_file)
         self.df = self.df[self.df["split"] == split].reset_index(drop=True)
-
+        self.current_epoch = 0
         self.preprocessors = {
             view_name: config_["preprocessor"]
             for view_name, config_ in view_configuration.items()
@@ -22,6 +23,12 @@ class DataClass(Dataset):
 
     def __len__(self):
         return len(self.df)
+
+    def set_epoch(self, epoch: int) -> None:
+        """
+        Setter for the epoch
+        """
+        self.current_epoch = epoch
 
     def _get_patch(self, image_: Image.Image, idx: int):
         width, height = image_.size
@@ -33,8 +40,8 @@ class DataClass(Dataset):
             seed = int(self.current_epoch * 997 + idx)
             rng = np.random.default_generator(np.random.PCG64(seed))
 
-            max_x = width - self.patch_size
-            max_y = height - self.patch_size
+            max_x = width - patch_size
+            max_y = height - patch_size
 
             x = rng.integers(0, max_x) if max_x > 0 else 0
             y = rng.integers(0, max_y) if max_y > 0 else 0
@@ -45,7 +52,7 @@ class DataClass(Dataset):
         item = self.df.iloc[idx]
         image_ = Image.open(item["path"]).convert("RGB")
         image_ = self._get_patch(image_, idx)
-        label = item["category"]
+        label = item["label"]
 
         view_outputs = {}
         for view_name, preprocessor in self.preprocessors.items():

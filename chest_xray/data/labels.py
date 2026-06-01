@@ -1,0 +1,17 @@
+CLASSES = (
+    "Hernia",
+    "Pneumonia",
+    "Fibrosis",
+    "Effusion",
+    "Edema",
+    "Emphysema",
+    "Mass",
+    "Nodule",
+    "Atelectasis",
+    "Cardiomegaly",
+    "Infiltration",
+    "Pleural_Thickening",
+    "Consolidation",
+    "Pneumothorax",
+    "No Finding",
+)

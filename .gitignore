@@ -4,3 +4,11 @@ __pycache__/
 .DS_Store
 venv/
 .env
+data/images/
+data/bbox_images/
+data/author_pdfs/
+.next
+node_modules
+chest_xray/data/models/*.pth
+wandb/
+.pth
